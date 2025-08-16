@@ -53,3 +53,8 @@ coverage/
 # Temporary folders
 tmp/
 temp/
+
+# Foundry
+cache/
+out/
+broadcast/
