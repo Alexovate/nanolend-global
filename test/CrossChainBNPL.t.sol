@@ -132,9 +132,9 @@ contract CrossChainBNPLTest is Test {
         usdc.mint(address(bnpl), INITIAL_USDC_SUPPLY); // Fund contract
         usdc.mint(borrower, INITIAL_USDC_SUPPLY); // Fund borrower for repayments
         
-        // Register merchant
+        // Register merchant with GCash number
         vm.prank(owner);
-        bnpl.registerMerchant(merchant, "Test Merchant");
+        bnpl.registerMerchant(merchant, "Test Merchant", "+639171234567");
         
         // Approve USDC for borrower repayments
         vm.prank(borrower);
@@ -154,12 +154,15 @@ contract CrossChainBNPLTest is Test {
         address newMerchant = address(6);
         
         vm.prank(owner);
-        bnpl.registerMerchant(newMerchant, "New Merchant");
+        bnpl.registerMerchant(newMerchant, "New Merchant", "+639171234567");
         
-        (bool isActive, string memory name, uint256 registeredAt) = bnpl.merchants(newMerchant);
-        assertEq(isActive, true);
-        assertEq(name, "New Merchant");
-        assertGt(registeredAt, 0);
+        CrossChainBNPL.Merchant memory merchantData = bnpl.getMerchantProfile(newMerchant);
+        assertEq(merchantData.isActive, true);
+        assertEq(merchantData.name, "New Merchant");
+        assertEq(merchantData.gcashNumber, "+639171234567");
+        assertEq(merchantData.totalBridged, 0);
+        assertEq(merchantData.bridgeCount, 0);
+        assertGt(merchantData.registeredAt, 0);
     }
     
     function testFundContract() public {
@@ -374,7 +377,7 @@ contract CrossChainBNPLTest is Test {
     function testOnlyOwnerCanRegisterMerchant() public {
         vm.startPrank(borrower);
         vm.expectRevert();
-        bnpl.registerMerchant(address(8), "Unauthorized Merchant");
+        bnpl.registerMerchant(address(8), "Unauthorized Merchant", "+639171234567");
         vm.stopPrank();
     }
     
@@ -413,6 +416,146 @@ contract CrossChainBNPLTest is Test {
         assertEq(usdc.balanceOf(owner), ownerInitialBalance + contractBalance);
     }
     
+    // ==================== BRIDGE OFFRAMP TESTS ====================
+    
+    function testBridgeToEthereum() public {
+        // Give merchant some USDC and approve contract
+        uint256 bridgeAmount = 10000000; // $10 USDC
+        usdc.mint(merchant, bridgeAmount);
+        
+        vm.startPrank(merchant);
+        usdc.approve(address(bnpl), bridgeAmount);
+        
+        // Bridge to Ethereum
+        address ethereumRecipient = address(0x1234567890123456789012345678901234567890);
+        bnpl.bridgeToEthereum(bridgeAmount, ethereumRecipient);
+        vm.stopPrank();
+        
+        // Check bridge transaction was recorded
+        CrossChainBNPL.BridgeTransaction memory bridgeTx = bnpl.getBridgeTransaction(1);
+        assertEq(bridgeTx.merchant, merchant);
+        assertEq(bridgeTx.ethereumRecipient, ethereumRecipient);
+        assertEq(bridgeTx.amount, bridgeAmount);
+        assertEq(bridgeTx.cctpNonce, 1);
+        assertEq(uint256(bridgeTx.status), uint256(CrossChainBNPL.BridgeStatus.INITIATED));
+        
+        // Check merchant statistics updated
+        CrossChainBNPL.Merchant memory merchantData = bnpl.getMerchantProfile(merchant);
+        assertEq(merchantData.totalBridged, bridgeAmount);
+        assertEq(merchantData.bridgeCount, 1);
+        
+        // Check USDC was transferred to TokenMessenger (simulating burn)
+        assertEq(usdc.balanceOf(address(tokenMessenger)), bridgeAmount);
+        assertEq(usdc.balanceOf(merchant), 0);
+    }
+    
+    function testBridgeToEthereumInvalidMerchant() public {
+        address unregisteredMerchant = address(0x999);
+        uint256 bridgeAmount = 1000000; // $1 USDC
+        
+        // Give unregistered merchant USDC
+        usdc.mint(unregisteredMerchant, bridgeAmount);
+        
+        vm.startPrank(unregisteredMerchant);
+        usdc.approve(address(bnpl), bridgeAmount);
+        
+        vm.expectRevert(CrossChainBNPL.InvalidMerchant.selector);
+        bnpl.bridgeToEthereum(bridgeAmount, address(0x1234));
+        vm.stopPrank();
+    }
+    
+    function testBridgeToEthereumZeroAmount() public {
+        vm.startPrank(merchant);
+        vm.expectRevert(CrossChainBNPL.InvalidBridgeAmount.selector);
+        bnpl.bridgeToEthereum(0, address(0x1234));
+        vm.stopPrank();
+    }
+    
+    function testBridgeToEthereumZeroAddress() public {
+        uint256 bridgeAmount = 1000000; // $1 USDC
+        usdc.mint(merchant, bridgeAmount);
+        
+        vm.startPrank(merchant);
+        usdc.approve(address(bnpl), bridgeAmount);
+        
+        vm.expectRevert(CrossChainBNPL.InvalidEthereumAddress.selector);
+        bnpl.bridgeToEthereum(bridgeAmount, address(0));
+        vm.stopPrank();
+    }
+    
+    function testBridgeToEthereumInsufficientBalance() public {
+        uint256 bridgeAmount = 1000000; // $1 USDC
+        // Don't mint USDC to merchant, so they have 0 balance
+        
+        vm.startPrank(merchant);
+        vm.expectRevert(CrossChainBNPL.InsufficientMerchantBalance.selector);
+        bnpl.bridgeToEthereum(bridgeAmount, address(0x1234));
+        vm.stopPrank();
+    }
+    
+    function testConfirmBridge() public {
+        // Setup bridge transaction
+        uint256 bridgeAmount = 5000000; // $5 USDC
+        usdc.mint(merchant, bridgeAmount);
+        
+        vm.startPrank(merchant);
+        usdc.approve(address(bnpl), bridgeAmount);
+        bnpl.bridgeToEthereum(bridgeAmount, address(0x1234));
+        vm.stopPrank();
+        
+        // Confirm bridge as owner
+        vm.prank(owner);
+        bnpl.confirmBridge(1);
+        
+        // Check status updated
+        CrossChainBNPL.BridgeTransaction memory bridgeTx = bnpl.getBridgeTransaction(1);
+        assertEq(uint256(bridgeTx.status), uint256(CrossChainBNPL.BridgeStatus.CONFIRMED));
+    }
+    
+    function testMarkBridgeFailed() public {
+        // Setup bridge transaction
+        uint256 bridgeAmount = 5000000; // $5 USDC
+        usdc.mint(merchant, bridgeAmount);
+        
+        vm.startPrank(merchant);
+        usdc.approve(address(bnpl), bridgeAmount);
+        bnpl.bridgeToEthereum(bridgeAmount, address(0x1234));
+        vm.stopPrank();
+        
+        // Mark bridge as failed
+        vm.prank(owner);
+        bnpl.markBridgeFailed(1, "Network congestion");
+        
+        // Check status updated
+        CrossChainBNPL.BridgeTransaction memory bridgeTx = bnpl.getBridgeTransaction(1);
+        assertEq(uint256(bridgeTx.status), uint256(CrossChainBNPL.BridgeStatus.FAILED));
+    }
+    
+    function testMultipleBridgeTransactions() public {
+        // Give merchant USDC for multiple bridges
+        uint256 bridgeAmount = 2000000; // $2 USDC per bridge
+        usdc.mint(merchant, bridgeAmount * 3);
+        
+        vm.startPrank(merchant);
+        usdc.approve(address(bnpl), type(uint256).max);
+        
+        // Execute 3 bridge transactions
+        bnpl.bridgeToEthereum(bridgeAmount, address(0x1111));
+        bnpl.bridgeToEthereum(bridgeAmount, address(0x2222));
+        bnpl.bridgeToEthereum(bridgeAmount, address(0x3333));
+        vm.stopPrank();
+        
+        // Check merchant statistics
+        CrossChainBNPL.Merchant memory merchantData = bnpl.getMerchantProfile(merchant);
+        assertEq(merchantData.totalBridged, bridgeAmount * 3);
+        assertEq(merchantData.bridgeCount, 3);
+        
+        // Check individual transactions
+        assertEq(bnpl.getBridgeTransaction(1).ethereumRecipient, address(0x1111));
+        assertEq(bnpl.getBridgeTransaction(2).ethereumRecipient, address(0x2222));
+        assertEq(bnpl.getBridgeTransaction(3).ethereumRecipient, address(0x3333));
+    }
+
     // ==================== INTEGRATION TESTS ====================
     
     function testCompleteUserJourney() public {
@@ -466,5 +609,42 @@ contract CrossChainBNPLTest is Test {
         assertEq(bnpl.getLoan(1).settlementDomain, bnpl.WORLD_CHAIN_DOMAIN());
         assertEq(bnpl.getLoan(2).settlementDomain, bnpl.BASE_DOMAIN());
         assertEq(bnpl.getLoan(3).settlementDomain, bnpl.ARBITRUM_DOMAIN());
+    }
+    
+    function testCompleteOfframpJourney() public {
+        // 1. Merchant receives USDC from loan repayment (simulate loan activity)
+        uint256 loanAmount = 3000000; // $3 USDC
+        usdc.mint(merchant, loanAmount * 2); // Give merchant 2x loan amount
+        
+        // 2. Merchant bridges accumulated USDC to Ethereum for GCash cash-out
+        address ethereumWallet = address(0x1234567890123456789012345678901234567890);
+        
+        vm.startPrank(merchant);
+        usdc.approve(address(bnpl), loanAmount);
+        bnpl.bridgeToEthereum(loanAmount, ethereumWallet);
+        vm.stopPrank();
+        
+        // 3. Verify bridge transaction created
+        CrossChainBNPL.BridgeTransaction memory bridgeTx = bnpl.getBridgeTransaction(1);
+        assertEq(bridgeTx.merchant, merchant);
+        assertEq(bridgeTx.ethereumRecipient, ethereumWallet);
+        assertEq(bridgeTx.amount, loanAmount);
+        assertEq(uint256(bridgeTx.status), uint256(CrossChainBNPL.BridgeStatus.INITIATED));
+        
+        // 4. Admin confirms successful CCTP bridge
+        vm.prank(owner);
+        bnpl.confirmBridge(1);
+        
+        // 5. Verify final state
+        bridgeTx = bnpl.getBridgeTransaction(1);
+        assertEq(uint256(bridgeTx.status), uint256(CrossChainBNPL.BridgeStatus.CONFIRMED));
+        
+        CrossChainBNPL.Merchant memory merchantData = bnpl.getMerchantProfile(merchant);
+        assertEq(merchantData.totalBridged, loanAmount);
+        assertEq(merchantData.bridgeCount, 1);
+        assertEq(merchantData.gcashNumber, "+639171234567");
+        
+        // USDC was burned via CCTP (transferred to mock TokenMessenger)
+        assertEq(usdc.balanceOf(address(tokenMessenger)), loanAmount);
     }
 }

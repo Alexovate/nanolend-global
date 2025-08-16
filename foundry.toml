@@ -21,6 +21,6 @@ forge-std = "https://github.com/foundry-rs/forge-std"
 
 # RPC URLs for multi-chain deployment
 [rpc_endpoints]
-world_chain = "${WORLD_CHAIN_RPC_URL}"
-base = "${BASE_RPC_URL}"  
-arbitrum = "${ARBITRUM_RPC_URL}"
+worldchain = "https://worldchain-mainnet.g.alchemy.com/public"
+base = "https://mainnet.base.org"
+arbitrum = "https://arb1.arbitrum.io/rpc"

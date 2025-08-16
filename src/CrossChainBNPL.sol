@@ -21,8 +21,8 @@ interface ITokenMessenger {
 
 /**
  * @title CrossChainBNPL
- * @notice Hackathon demo: Cross-chain BNPL with Circle CCTP V2 integration
- * @dev Streamlined version for ETH Global NYC 2025 - World Chain + Base/Arbitrum settlement
+ * @notice ETH Global NYC 2025: BNPL system + CCTP Offramp for Philippines merchants
+ * @dev Dual-purpose: Loan management + USDC bridge to Ethereum for GCash cash-out
  */
 contract CrossChainBNPL is Ownable, ReentrancyGuard, Pausable {
     
@@ -58,11 +58,31 @@ contract CrossChainBNPL is Ownable, ReentrancyGuard, Pausable {
         uint256 totalRepaid;            // Lifetime repaid amount
     }
     
-    /// @notice Merchant registration - simplified for demo
+    /// @notice Merchant registration - enhanced for offramp
     struct Merchant {
         bool isActive;                  // Whether merchant is active
         string name;                    // Business name
+        string gcashNumber;             // GCash number for cash-out support
         uint256 registeredAt;           // Registration timestamp
+        uint256 totalBridged;           // Total USDC bridged to Ethereum
+        uint256 bridgeCount;            // Number of bridge transactions
+    }
+    
+    /// @notice Bridge transaction tracking
+    struct BridgeTransaction {
+        address merchant;               // Merchant who initiated bridge
+        address ethereumRecipient;      // Destination address on Ethereum
+        uint256 amount;                 // Amount bridged
+        uint64 cctpNonce;              // Circle CCTP nonce
+        uint256 timestamp;              // Bridge timestamp
+        BridgeStatus status;            // Current status
+    }
+    
+    /// @notice Bridge transaction status
+    enum BridgeStatus {
+        INITIATED,                      // Bridge transaction started
+        CONFIRMED,                      // CCTP completed successfully
+        FAILED                          // Bridge failed
     }
     
     /// @dev Core mappings
@@ -70,11 +90,16 @@ contract CrossChainBNPL is Ownable, ReentrancyGuard, Pausable {
     mapping(address => CreditScore) public creditScores;
     mapping(address => Merchant) public merchants;
     mapping(address => uint256[]) public userLoans;
+    mapping(uint64 => BridgeTransaction) public bridgeTransactions;
     
     /// @dev Demo configuration (simplified)
     uint256 public initialCreditLimit = 5000000;          // $5 starting credit (5M USDC)
     uint256 public minLoanAmount = 1000000;               // $1 minimum loan (1M USDC)
     uint256 public maxLoanAmount = 5000000;               // $5 maximum loan (5M USDC)
+    
+    /// @dev Offramp configuration
+    uint32 public constant ETHEREUM_DOMAIN = 0;           // Circle CCTP Ethereum domain
+    uint256 public serviceFeeUSDC = 0;                    // Zero fees for hackathon demo
     
     /// @notice Events
     event LoanCreated(
@@ -95,7 +120,19 @@ contract CrossChainBNPL is Ownable, ReentrancyGuard, Pausable {
     );
     
     event LoanRepaid(uint256 indexed loanId, address indexed borrower, uint256 amount);
-    event MerchantRegistered(address indexed merchant, string name);
+    event MerchantRegistered(address indexed merchant, string name, string gcashNumber);
+    
+    /// @notice Offramp bridge events
+    event BridgeInitiated(
+        address indexed merchant,
+        address indexed ethereumRecipient,
+        uint256 amount,
+        uint64 cctpNonce,
+        uint256 timestamp
+    );
+    
+    event BridgeConfirmed(uint64 indexed cctpNonce, address indexed merchant);
+    event BridgeFailed(uint64 indexed cctpNonce, address indexed merchant, string reason);
     
     /// @notice Custom errors
     error InvalidMerchant();
@@ -107,6 +144,9 @@ contract CrossChainBNPL is Ownable, ReentrancyGuard, Pausable {
     error InsufficientContractFunds();
     error InvalidDomain();
     error InvalidSettlementAddress();
+    error InvalidBridgeAmount();
+    error InvalidEthereumAddress();
+    error InsufficientMerchantBalance();
     
     /**
      * @notice Contract constructor
@@ -258,18 +298,23 @@ contract CrossChainBNPL is Ownable, ReentrancyGuard, Pausable {
      * @notice Register a merchant (Admin only)
      * @param merchantAddress Merchant's address
      * @param name Business name
+     * @param gcashNumber GCash number for Philippines cash-out support
      */
     function registerMerchant(
         address merchantAddress,
-        string calldata name
+        string calldata name,
+        string calldata gcashNumber
     ) external onlyOwner {
         merchants[merchantAddress] = Merchant({
             isActive: true,
             name: name,
-            registeredAt: block.timestamp
+            gcashNumber: gcashNumber,
+            registeredAt: block.timestamp,
+            totalBridged: 0,
+            bridgeCount: 0
         });
         
-        emit MerchantRegistered(merchantAddress, name);
+        emit MerchantRegistered(merchantAddress, name, gcashNumber);
     }
     
     /**
@@ -300,6 +345,107 @@ contract CrossChainBNPL is Ownable, ReentrancyGuard, Pausable {
         CreditScore memory credit = creditScores[user];
         return (credit.creditLimit, credit.totalRepaid);
     }
+    
+    // ==================== OFFRAMP BRIDGE FUNCTIONS ====================
+    
+    /**
+     * @notice Bridge USDC from World Chain to Ethereum for GCash cash-out
+     * @param amount Amount of USDC to bridge (6 decimals)
+     * @param ethereumRecipient Destination address on Ethereum
+     * @dev Merchants use this to bridge accumulated USDC for fiat cash-out
+     */
+    function bridgeToEthereum(
+        uint256 amount,
+        address ethereumRecipient
+    ) external whenNotPaused nonReentrant {
+        // Validate inputs
+        if (!merchants[msg.sender].isActive) revert InvalidMerchant();
+        if (amount == 0) revert InvalidBridgeAmount();
+        if (ethereumRecipient == address(0)) revert InvalidEthereumAddress();
+        
+        // Check merchant has sufficient USDC balance
+        uint256 merchantBalance = usdc.balanceOf(msg.sender);
+        if (merchantBalance < amount) revert InsufficientMerchantBalance();
+        
+        // Transfer USDC from merchant to contract
+        require(usdc.transferFrom(msg.sender, address(this), amount), "USDC transfer failed");
+        
+        // Approve CCTP TokenMessenger
+        usdc.approve(address(tokenMessenger), amount);
+        
+        // Convert Ethereum address to bytes32 (CCTP requirement)
+        bytes32 mintRecipient = bytes32(uint256(uint160(ethereumRecipient)));
+        
+        // Initiate CCTP bridge to Ethereum
+        uint64 nonce = tokenMessenger.depositForBurn(
+            amount,
+            ETHEREUM_DOMAIN,
+            mintRecipient,
+            address(usdc)
+        );
+        
+        // Record bridge transaction
+        bridgeTransactions[nonce] = BridgeTransaction({
+            merchant: msg.sender,
+            ethereumRecipient: ethereumRecipient,
+            amount: amount,
+            cctpNonce: nonce,
+            timestamp: block.timestamp,
+            status: BridgeStatus.INITIATED
+        });
+        
+        // Update merchant bridge statistics
+        Merchant storage merchant = merchants[msg.sender];
+        merchant.totalBridged += amount;
+        merchant.bridgeCount++;
+        
+        emit BridgeInitiated(msg.sender, ethereumRecipient, amount, nonce, block.timestamp);
+    }
+    
+    /**
+     * @notice Get merchant profile with bridge statistics
+     * @param merchantAddress Merchant address
+     * @return Merchant profile data
+     */
+    function getMerchantProfile(address merchantAddress) external view returns (Merchant memory) {
+        return merchants[merchantAddress];
+    }
+    
+    /**
+     * @notice Get bridge transaction details
+     * @param cctpNonce Circle CCTP nonce
+     * @return Bridge transaction data
+     */
+    function getBridgeTransaction(uint64 cctpNonce) external view returns (BridgeTransaction memory) {
+        return bridgeTransactions[cctpNonce];
+    }
+    
+    /**
+     * @notice Confirm successful bridge (Admin only)
+     * @param cctpNonce Circle CCTP nonce
+     */
+    function confirmBridge(uint64 cctpNonce) external onlyOwner {
+        BridgeTransaction storage txn = bridgeTransactions[cctpNonce];
+        require(txn.status == BridgeStatus.INITIATED, "Invalid transaction status");
+        
+        txn.status = BridgeStatus.CONFIRMED;
+        emit BridgeConfirmed(cctpNonce, txn.merchant);
+    }
+    
+    /**
+     * @notice Mark bridge as failed (Admin only)
+     * @param cctpNonce Circle CCTP nonce
+     * @param reason Failure reason
+     */
+    function markBridgeFailed(uint64 cctpNonce, string calldata reason) external onlyOwner {
+        BridgeTransaction storage txn = bridgeTransactions[cctpNonce];
+        require(txn.status == BridgeStatus.INITIATED, "Invalid transaction status");
+        
+        txn.status = BridgeStatus.FAILED;
+        emit BridgeFailed(cctpNonce, txn.merchant, reason);
+    }
+    
+    // ==================== ADMIN FUNCTIONS ====================
     
     /**
      * @notice Fund contract with USDC (Owner only)
