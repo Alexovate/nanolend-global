@@ -9,15 +9,14 @@
 
 ### 🚀 What We're Building
 
-A completely new cross-chain BNPL platform built from scratch during the hackathon. The world's first implementation combining World ID verification, Circle CCTP V2 bridging, and tri-stablecoin support (USDC + PYUSD + cUSD) for financial inclusion across four major blockchain ecosystems.
+A completely new cross-chain BNPL platform built from scratch during the hackathon. The world's first implementation combining World ID verification, Circle CCTP V2 bridging, and dual-stablecoin support (USDC + PYUSD) for seamless cross-chain merchant settlements.
 
 ### ⚡ Core Innovation
 
-- **Quad-Chain Settlement**: Borrow on World Chain, settle on Base/Arbitrum/Celo
-- **Tri-Stablecoin Choice**: USDC, PYUSD, or cUSD based on merchant preference
+- **Cross-Chain Settlement**: Borrow on World Chain, settle on Base/Arbitrum via CCTP
+- **Dual-Stablecoin Choice**: USDC or PYUSD based on merchant preference
 - **Gasless UX**: Circle Paymaster covers all transaction costs
 - **Instant Onramp**: PHP → USDC via Coinbase in <2 minutes
-- **Financial Inclusion**: Celo integration for emerging market accessibility
 
 ---
 
@@ -26,9 +25,9 @@ A completely new cross-chain BNPL platform built from scratch during the hackath
 ### New Smart Contract System
 
 **CrossChainBNPL.sol**: Main lending logic with World ID verification (World Chain)  
-**MerchantSettlement.sol**: Multi-stablecoin settlement contracts (Base + Arbitrum + Celo)  
-**CCTPBridge.sol**: Cross-chain messaging and bridging logic  
-**TriStablecoin.sol**: USDC + PYUSD + cUSD merchant preference system
+**MerchantSettlement.sol**: Dual-stablecoin settlement contracts (Base + Arbitrum)  
+**CCTPBridge.sol**: Circle CCTP V2 cross-chain messaging and bridging  
+**DualStablecoin.sol**: USDC + PYUSD merchant preference system
 
 ### Frontend Application
 
@@ -41,9 +40,9 @@ A completely new cross-chain BNPL platform built from scratch during the hackath
 
 #### 🎯 Circle Integration
 
-- **CCTP V2**: Cross-chain USDC settlement (World Chain ↔ Base/Arbitrum/Celo)
+- **CCTP V2**: Cross-chain USDC settlement (World Chain ↔ Base/Arbitrum)
 - **Paymaster**: Gasless transactions for all users
-- **Multi-chain**: Deploy settlement contracts on Base + Arbitrum + Celo
+- **Multi-chain**: Deploy settlement contracts on Base + Arbitrum
 
 #### 🎯 Coinbase CDP Integration
 
@@ -54,18 +53,8 @@ A completely new cross-chain BNPL platform built from scratch during the hackath
 #### 🎯 PayPal USD Integration
 
 - **PYUSD Support**: Add as second stablecoin option
-- **Merchant Choice**: USDC, PYUSD, or cUSD settlement preference
-- **Tri-Token UI**: Seamless switching between all stablecoins
-
-#### 🎯 Celo Integration (Grant Strategy)
-
-- **cUSD Support**: Add as third stablecoin option for emerging markets
-- **Mobile-First**: Leverage Celo's mobile-optimized infrastructure
-- **Financial Inclusion**: Target unbanked populations in Global South
-- **Low-Cost Settlement**: Ultra-low transaction fees for micro-transactions
-- **Merchant Accessibility**: Enable local businesses to receive cUSD payments
-- **Cross-Chain Bridge**: Standard bridges for Celo when CCTP unavailable
-- **Grant Validation**: Hackathon prototype proves technical feasibility for $5K grant
+- **Merchant Choice**: USDC or PYUSD settlement preference
+- **Dual-Token UI**: Seamless switching between stablecoins
 
 ---
 
@@ -82,12 +71,12 @@ A completely new cross-chain BNPL platform built from scratch during the hackath
 2. **Cross-Chain BNPL Innovation**
 
    - Request microloan on World Chain
-   - Choose USDC, PYUSD, or cUSD for settlement
+   - Choose USDC or PYUSD for settlement
    - Circle Paymaster provides gasless experience
    - CCTP V2 bridges funds to merchant's preferred chain
 
 3. **Flexible Repayment**
-   - Repay on World Chain, Base, Arbitrum, or Celo
+   - Repay on World Chain, Base, or Arbitrum
    - Progressive credit building algorithm
    - Automatic limit increases based on behavior
 
@@ -97,13 +86,12 @@ A completely new cross-chain BNPL platform built from scratch during the hackath
 World Chain (Primary)
 ├── User verification & credit scoring
 ├── Loan origination
-└── Cross-chain bridges to settlement chains
+└── CCTP V2 bridges to settlement chains
 
 Settlement Chains (Merchant Choice)
-├── Base: USDC settlement (Circle focus)
+├── Base: USDC settlement (Circle's main chain)
 ├── Arbitrum: PYUSD settlement (PayPal focus)
-├── Celo: cUSD settlement (Emerging markets focus)
-└── Optimized gas costs & regional preferences
+└── Optimized gas costs & merchant preferences
 ```
 
 ---
@@ -118,11 +106,11 @@ Settlement Chains (Merchant Choice)
    - Show CCTP bridge in action
    - 30-second end-to-end flow
 
-2. **Tri-Stablecoin Demo**
+2. **Dual-Stablecoin Demo**
 
-   - User chooses between USDC, PYUSD, or cUSD
+   - User chooses between USDC or PYUSD
    - Merchant receives preferred token on preferred chain
-   - Seamless UI experience across all stablecoins
+   - Seamless UI experience across both stablecoins
 
 3. **Gasless Experience Demo**
 
@@ -142,23 +130,18 @@ Settlement Chains (Merchant Choice)
    - Real repayment history
    - Financial inclusion impact
 
-6. **Celo Financial Inclusion Demo**
-   - cUSD micro-transaction settlement
-   - Mobile-optimized emerging market UX
-   - Ultra-low cost transactions for unbanked users
-
 ---
 
 ## ✅ Definition of Done
 
 ### Technical Demonstrations
 
-- [ ] **Quad-Chain Flow**: Complete loan origination on World Chain with settlement on Base/Arbitrum/Celo
+- [ ] **Cross-Chain Flow**: Complete loan origination on World Chain with settlement on Base/Arbitrum
 - [ ] **Gasless Experience**: End-to-end user journey with zero transaction costs
 - [ ] **Instant Onboarding**: Fiat-to-crypto conversion integrated into seamless workflow
-- [ ] **Tri-Stablecoin System**: Dynamic merchant preference selection between USDC/PYUSD/cUSD
+- [ ] **Dual-Stablecoin System**: Dynamic merchant preference selection between USDC/PYUSD
 - [ ] **Mobile Experience**: Full-featured application working on actual mobile devices
-- [ ] **Financial Inclusion**: cUSD settlement demonstrating emerging market accessibility
+- [ ] **CCTP Integration**: Production-ready Circle CCTP V2 cross-chain settlement
 
 ### Deliverables
 
@@ -175,7 +158,7 @@ Settlement Chains (Merchant Choice)
 
 - **Smart Contracts**: Foundry framework with Solidity ^0.8.21
 - **Frontend**: Next.js 15 with React 18 and TypeScript
-- **Blockchain**: Quad-chain deployment (World Chain, Base, Arbitrum, Celo)
+- **Blockchain**: Cross-chain deployment (World Chain, Base, Arbitrum)
 - **Web3**: Viem and Wagmi for blockchain interactions
 
 ### Partner APIs & SDKs
@@ -183,12 +166,11 @@ Settlement Chains (Merchant Choice)
 - **Circle**: CCTP V2 documentation and Paymaster integration guides
 - **Coinbase**: CDP SDK documentation and Onramp API specifications
 - **PayPal**: PYUSD smart contract addresses and integration documentation
-- **Celo**: cUSD contract addresses and mobile-first development guides
 - **World**: World ID SDK and World App integration guides
 
 ---
 
-**Revolutionizing microfinance through quad-chain innovation, tri-stablecoin choice, and gasless UX! 🚀**
+**Revolutionizing microfinance through cross-chain innovation, dual-stablecoin choice, and gasless UX! 🚀**
 
 ---
 
@@ -203,19 +185,17 @@ Settlement Chains (Merchant Choice)
 
 ### Post-Hackathon Grant Positioning
 
-#### **Celo $5,000 Grant Strategy**
+#### **Technology Leadership Positioning**
 
-- **Technical Validation**: Hackathon prototype proves grant proposal feasibility
-- **Merchant-Centric cUSD Settlement**: Demonstrates emerging market focus
-- **Mobile-First Architecture**: Leverages Celo's core infrastructure strengths
-- **Financial Inclusion Impact**: Aligns with Celo's mission and SF Residency insights
-- **Philippines Pilot Ready**: Connects to existing grant application and market research
-- **90% Grant Approval Probability**: Working prototype removes technical uncertainty
+- **CCTP V2 Pioneer**: Among first to implement production CCTP V2 integration
+- **Cross-Chain Architecture**: Proven expertise in multi-chain DeFi systems
+- **Partner Integration Depth**: Advanced usage of Circle, Coinbase, PayPal APIs
+- **Open Source Foundation**: Strong codebase for future development and partnerships
 
-#### **Total Expected Value**
+#### **Expected Strategic Value**
 
 ```
-Hackathon Side Tracks: $9,000+ expected (Circle + Coinbase + PayPal)
-Celo Grant (Q1 2026): $5,000 near-guaranteed with prototype
-Total Strategic Value: $14,000+ over 6 months
+Hackathon Prize Tracks: $9,000+ expected (Circle + Coinbase + PayPal)
+Technical Leadership: Advanced DeFi architecture portfolio
+Partnership Opportunities: Direct connections with major Web3 companies
 ```
