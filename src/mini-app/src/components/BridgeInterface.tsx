@@ -16,6 +16,8 @@ const CONTRACT_ADDRESS = process.env
 const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS as `0x${string}`;
 const USDC_DECIMALS = 6;
 
+const BRIDGE_PRESET_AMOUNTS = ["5", "10", "20", "50"];
+
 export function BridgeInterface() {
   const { address } = useAccount();
   const [bridgeAmount, setBridgeAmount] = useState("10");
@@ -84,45 +86,91 @@ export function BridgeInterface() {
           </p>
         </div>
 
-        {/* Bridge Amount Input */}
-        <div className="space-y-2">
+        {/* Bridge Amount Selection */}
+        <div className="space-y-3">
           <label className="block text-sm font-medium text-gray-700">
             Amount to Bridge (USDC)
           </label>
-          <div className="relative">
-            <input
-              type="number"
-              value={bridgeAmount}
-              onChange={(e) => setBridgeAmount(e.target.value)}
-              min="1"
-              max={availableBalance}
-              step="0.1"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg font-semibold text-center focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="10.00"
-            />
-            <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
-              USDC
-            </span>
+
+          {/* Preset Amount Buttons */}
+          <div className="grid grid-cols-4 gap-2">
+            {BRIDGE_PRESET_AMOUNTS.map((presetAmount) => (
+              <button
+                key={presetAmount}
+                onClick={() => setBridgeAmount(presetAmount)}
+                disabled={
+                  parseFloat(presetAmount) > parseFloat(availableBalance)
+                }
+                className={`py-3 px-2 rounded-lg font-semibold text-sm transition-all ${
+                  bridgeAmount === presetAmount
+                    ? "bg-green-500 text-white"
+                    : parseFloat(presetAmount) > parseFloat(availableBalance)
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                ${presetAmount}
+              </button>
+            ))}
           </div>
+
+          {/* Selected Amount Display */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+            <p className="text-sm text-green-600 font-medium">
+              Bridging Amount
+            </p>
+            <p className="text-2xl font-bold text-green-900">
+              ${bridgeAmount} USDC
+            </p>
+          </div>
+
           <p className="text-xs text-gray-500 text-center">
             Available: {availableBalance} USDC • Fee: Free (Demo)
           </p>
         </div>
 
         {/* Ethereum Address Input */}
-        <div className="space-y-2">
+        <div className="space-y-3">
           <label className="block text-sm font-medium text-gray-700">
             Ethereum Wallet Address
           </label>
-          <input
-            type="text"
-            value={ethereumAddress}
-            onChange={(e) => setEthereumAddress(e.target.value)}
-            placeholder="0x1234567890123456789012345678901234567890"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-green-500 focus:border-transparent"
-          />
+
+          <div className="space-y-2">
+            <input
+              type="text"
+              value={ethereumAddress}
+              onChange={(e) => setEthereumAddress(e.target.value)}
+              placeholder="0x1234567890123456789012345678901234567890"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            />
+
+            {/* Quick Wallet Options */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() =>
+                  setEthereumAddress(
+                    "0x742f35c9e4C4D1b3B1bA4e0c1F1c0b2b8c45E2F1"
+                  )
+                }
+                className="py-2 px-3 bg-gray-100 rounded-lg text-xs text-gray-700 hover:bg-gray-200 transition-all"
+              >
+                📱 Use MetaMask
+              </button>
+              <button
+                onClick={() =>
+                  setEthereumAddress(
+                    "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+                  )
+                }
+                className="py-2 px-3 bg-gray-100 rounded-lg text-xs text-gray-700 hover:bg-gray-200 transition-all"
+              >
+                🏦 Use Exchange
+              </button>
+            </div>
+          </div>
+
           <p className="text-xs text-gray-500">
-            Your Ethereum wallet where you'll receive USDC
+            🇵🇭 Your Ethereum wallet for GCash cash-out via Binance P2P
           </p>
         </div>
 

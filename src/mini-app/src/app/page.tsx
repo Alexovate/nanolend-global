@@ -36,9 +36,11 @@ export default function Home() {
           {/* Hero Section */}
           <div className="space-y-4">
             <div className="text-6xl mb-4">🌉</div>
-            <h1 className="text-4xl font-bold text-gradient">USDC Offramp</h1>
+            <h1 className="text-4xl font-bold text-gradient">
+              NanoLend Global
+            </h1>
             <p className="text-lg text-gray-700 leading-relaxed">
-              Bridge USDC to Ethereum, Cash out to GCash
+              BNPL Microloans + CCTP Bridge to GCash
             </p>
             <p className="text-sm text-gray-600">
               For Philippines merchants • Powered by Circle CCTP

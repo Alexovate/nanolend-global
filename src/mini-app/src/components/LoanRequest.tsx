@@ -30,9 +30,11 @@ const DEMO_MERCHANTS = [
   },
 ];
 
+const PRESET_AMOUNTS = ["1", "2", "3", "5"];
+
 export function LoanRequest() {
   const { address } = useAccount();
-  const [amount, setAmount] = useState("5");
+  const [amount, setAmount] = useState("2");
   const [selectedMerchant, setSelectedMerchant] = useState(DEMO_MERCHANTS[0]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -80,28 +82,37 @@ export function LoanRequest() {
         <p className="text-sm text-gray-600">Get instant USDC with World ID</p>
       </div>
 
-      {/* Amount Input */}
-      <div className="space-y-2">
+      {/* Amount Selection */}
+      <div className="space-y-3">
         <label className="block text-sm font-medium text-gray-700">
           Loan Amount (USDC)
         </label>
-        <div className="relative">
-          <input
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            min="1"
-            max="5"
-            step="0.1"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg font-semibold text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="5.00"
-          />
-          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
-            USDC
-          </span>
+
+        {/* Preset Amount Buttons */}
+        <div className="grid grid-cols-4 gap-2">
+          {PRESET_AMOUNTS.map((presetAmount) => (
+            <button
+              key={presetAmount}
+              onClick={() => setAmount(presetAmount)}
+              className={`py-3 px-2 rounded-lg font-semibold text-sm transition-all ${
+                amount === presetAmount
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              ${presetAmount}
+            </button>
+          ))}
         </div>
+
+        {/* Selected Amount Display */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+          <p className="text-sm text-blue-600 font-medium">Selected Amount</p>
+          <p className="text-2xl font-bold text-blue-900">${amount} USDC</p>
+        </div>
+
         <p className="text-xs text-gray-500 text-center">
-          Maximum: $5.00 USDC for demo
+          💡 Start small, build credit • Max: $5 USDC
         </p>
       </div>
 
