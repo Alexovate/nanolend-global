@@ -4,7 +4,7 @@ theme: default
 paginate: true
 backgroundColor: "#FFFFFF"
 color: "#2E3238"
-header: '<div style="text-align: right; color: #64B5F6; font-weight: bold; font-size: 0.9em;">NanoLend Global | ETH Global NYC 2025</div>'
+header: ""
 style: |
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -111,14 +111,7 @@ style: |
     font-weight: 600;
   }
 
-  .feature-box {
-    background: #f8f8f8;
-    border-left: 4px solid #64B5F6;
-    padding: 15px 20px;
-    margin: 15px 0;
-    border-radius: 0 8px 8px 0;
-    font-size: 1.3em;
-  }
+
 
   .achievement-box {
     background: #f8f8f8;
@@ -277,11 +270,11 @@ style: |
 
 ### Current BNPL Limitations
 
-<div class="feature-box">
+<div class="achievement-box">
 <strong>Centralized platforms</strong> require credit scores that exclude emerging markets
 </div>
 
-<div class="feature-box">
+<div class="achievement-box">
 <strong>High fees (3-8%)</strong> and single-chain restrictions limit global accessibility  
 </div>
 
@@ -318,37 +311,10 @@ style: |
 
 ---
 
-# Live Demo Time!
+# Live Demo
 
 <div class="demo-callout">
-🚀 Complete BNPL cycle in under 2 minutes
-</div>
-
-<div class="columns">
-<div>
-
-### Demo Flow
-
-1. **🏪 Merchant Selection**
-2. **🆔 World ID Verification**
-3. **💰 Instant Loan Approval**
-4. **📱 Mobile Dashboard**
-5. **🔄 Easy Repayment**
-
-</div>
-<div>
-
-### Key Features
-
-<div class="achievement-box">
-<strong>Real Transactions:</strong> Live smart contract on World Chain
-</div>
-
-<div class="achievement-box">
-<strong>Mobile-First:</strong> Optimized for World App
-</div>
-
-</div>
+🚀 Let's see NanoLend Global
 </div>
 
 ---
@@ -362,8 +328,8 @@ style: |
 
 <span class="success-badge">✅ World ID</span>
 <span class="success-badge">✅ MiniKit</span>
-<span class="badge">🔄 Circle CCTP (In Progress)</span>
-<span class="badge">🔄 Coinbase CDP (Planned)</span>
+<span class="badge">🔄 Circle CCTP</span>
+<span class="badge">🔄 Coinbase CDP</span>
 
 ### Architecture
 
@@ -434,43 +400,43 @@ Functional identity verification and BNPL flows
 <div class="columns">
 <div>
 
-### Immediate Roadmap
+### Next Steps
 
-- **🟣 Solana Integration** - Ultra-low cost
-- **🔄 Advanced Bridging** - Multi-chain expansion
-- **📊 Credit Scoring** - ML-powered risk assessment
-- **🏪 Merchant Tools** - Dashboard and analytics
+<div class="achievement-box">
+<strong>🟣 Solana Integration</strong><br/>
+Ultra-low cost transactions
+</div>
 
-### Impact Target
+<div class="achievement-box">
+<strong>🌍 Geographic Expansion</strong><br/>
+Southeast Asia, Africa, Latin America
+</div>
 
-<div style="text-align: center; margin: 20px 0;">
-  <div class="stat-circle" style="width: 150px; height: 150px;">
-    <div class="stat-value" style="font-size: 2.5em;">100M</div>
-    <div class="stat-label" style="font-size: 0.9em;">People with credit access by 2030</div>
-  </div>
+<div class="achievement-box">
+<strong>📊 AI Credit Scoring</strong><br/>
+ML-powered risk assessment
 </div>
 
 </div>
 <div>
 
-### Partnership Pipeline
+### Business Model
 
 <div class="achievement-box">
-<strong>🌍 ADB Collaboration</strong><br/>
-Pacific region pilot programs
-</div>
-
-<div class="achievement-box">
-<strong>🎯 Geographic Focus</strong><br/>
-Southeast Asia, Africa, Latin America
+<strong>💰 Profitable Business</strong><br/>
+Revenue from merchant partnerships and lending spread
 </div>
 
 <div class="achievement-box">
-<strong>💡 Sustainability Model</strong><br/>
-1% transaction fees fund expansion
+<strong>💎 Liquidity Mining</strong><br/>
+Investors fund the system and earn rewards
 </div>
 
 </div>
+</div>
+
+<div class="achievement-box" style="text-align: center; margin-top: 30px; font-size: 1.4em;">
+<strong>🎯 Goal: 100 million people with credit access by 2030</strong>
 </div>
 
 ---
@@ -486,8 +452,8 @@ Southeast Asia, Africa, Latin America
 💻 github.com/alexovate/nanolend-global
 </div>
 
-<div style="margin-top: 50px;">
-<span class="success-badge">🚀 Let's bring BNPL to 1.4B people</span>
+<div class="demo-callout" style="margin-top: 50px;">
+🚀 Let's bring BNPL to 1.4B people
 </div>
 
 </div>
