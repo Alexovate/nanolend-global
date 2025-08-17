@@ -4,6 +4,8 @@
 
 A revolutionary BNPL (Buy Now, Pay Later) platform that uses World ID verification instead of traditional credit scores. Built from scratch in 48 hours to bring financial inclusion to 1.4 billion unbanked people through blockchain-native identity verification.
 
+![NanoLend Global - Loan Dashboard](./assets/LoanDashboardScreen.PNG)
+
 ## 🎯 Core Innovation
 
 - **World ID Verification**: Sybil-resistant identity without banking history requirements
@@ -13,6 +15,102 @@ A revolutionary BNPL (Buy Now, Pay Later) platform that uses World ID verificati
 - **Philippine Market Focus**: 1.3M sari-sari stores + 81M GCash users
 
 ## 🏗️ Architecture
+
+### System Flow
+
+```mermaid
+flowchart TD
+    A[👤 User Opens World App] --> B[🌍 World ID Verification]
+    B --> C[✅ Sybil-Resistant Identity Proof]
+    C --> D[📱 NanoLend Mini-App]
+
+    D --> E[🏪 Select Merchant]
+    E --> F[💰 Request Loan Amount]
+    F --> G[📝 Smart Contract Validates]
+
+    G --> H{Credit Check}
+    H -->|✅ Approved| I[💳 Instant USDC Payment to Merchant]
+    H -->|❌ Denied| J[Insufficient Credit Limit]
+
+    I --> K[📊 Loan Dashboard Updated]
+    K --> L[⏰ Interest Accrual Begins]
+
+    L --> M[📱 User Repayment via MiniKit]
+    M --> N[🔐 Permit2 Signature Transfer]
+    N --> O[💸 USDC Transferred to Contract]
+    O --> P[📈 Credit Score Increases]
+    P --> Q[🆙 Higher Credit Limits Unlocked]
+
+    %% Bridge Flow
+    I --> R[🌉 Optional: Bridge to Ethereum]
+    R --> S[🔄 Circle CCTP Cross-Chain]
+    S --> T[🏦 Ethereum USDC for GCash Cash-out]
+
+    %% Smart Contract Layer
+    subgraph SC["🏗️ Smart Contract Layer"]
+        SC1[CrossChainBNPL.sol]
+        SC2[World ID Integration]
+        SC3[Progressive Credit Engine]
+        SC4[Permit2 Repayments]
+    end
+
+    G --> SC
+    N --> SC
+
+    %% External Integrations
+    subgraph EXT["🔗 External Integrations"]
+        EXT1[World ID Protocol]
+        EXT2[Circle CCTP]
+        EXT3[World Chain USDC]
+        EXT4[MiniKit SDK]
+    end
+
+    B --> EXT1
+    S --> EXT2
+    I --> EXT3
+    M --> EXT4
+
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style I fill:#e8f5e8
+    style P fill:#fff3e0
+    style SC fill:#f5f5f5
+    style EXT fill:#fafafa
+```
+
+### Technical Architecture
+
+```mermaid
+graph TB
+    subgraph "Frontend Layer"
+        WA[World App] --> MA[Mini-App]
+        MA --> UI[Next.js UI]
+        MA --> MK[MiniKit SDK]
+    end
+
+    subgraph "Blockchain Layer"
+        WC[World Chain] --> BNPL[CrossChainBNPL.sol]
+        BNPL --> USDC[USDC Token]
+        BNPL --> WID[World ID Verification]
+    end
+
+    subgraph "Cross-Chain Layer"
+        CCTP[Circle CCTP] --> ETH[Ethereum]
+        CCTP --> ARB[Arbitrum]
+        ETH --> GC[GCash Integration]
+    end
+
+    UI --> BNPL
+    MK --> BNPL
+    WID --> BNPL
+    BNPL --> CCTP
+
+    style WA fill:#e1f5fe
+    style BNPL fill:#e8f5e8
+    style CCTP fill:#fff3e0
+```
+
+### System Components
 
 ```
 Current Implementation (World Chain)
@@ -124,6 +222,28 @@ forge test --match-test testCreditProgression
 4. **Instant Loan Approval** - Smart contract pays merchant immediately
 5. **View Dashboard** - Real-time credit tracking and loan management
 6. **Easy Repayment** - MiniKit integration for seamless payments
+
+### 📸 Application Screenshots
+
+#### Loan Dashboard
+
+![Loan Dashboard](./assets/LoanDashboardScreen.PNG)
+_Real-time BNPL credit status with available credit, total repaid, and active loans tracking_
+
+#### Loan Request Interface
+
+![Loan Request](./assets/LoanRequestScreen.PNG)
+_World ID verified loan requests with merchant selection and instant approval_
+
+#### CCTP Bridge to Ethereum
+
+![Bridge Interface](./assets/CCTPBridgeToEthScreen.PNG)
+_Cross-chain USDC bridging for Philippines GCash cash-out via Circle CCTP_
+
+#### Loan Repayment Flow
+
+![Repayment Interface](./assets/LoanRepaymentScreen.PNG)
+_Seamless loan repayment with MiniKit integration and progressive credit building_
 
 ### 2. Smart Contract Interaction
 
