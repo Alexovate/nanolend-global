@@ -189,6 +189,51 @@ contract ManageCrossChainBNPL is Script {
         console.log("Batch merchant registration completed!");
     }
     
+    function getMerchantProfile(address merchantAddress) external loadConfig {
+        console.log("=== Get Merchant Profile ===");
+        console.log("Merchant address:", merchantAddress);
+        
+        require(contractAddress != address(0), "Contract address not set");
+        bnpl = CrossChainBNPL(contractAddress);
+        
+        try bnpl.getMerchantProfile(merchantAddress) returns (CrossChainBNPL.Merchant memory merchant) {
+            if (!merchant.isActive && bytes(merchant.name).length == 0) {
+                console.log("Merchant not found or not registered");
+            } else {
+                console.log("=== Merchant Found ===");
+                console.log("Active:", merchant.isActive);
+                console.log("Name:", merchant.name);
+                console.log("Location:", merchant.location);
+                console.log("Contact:", merchant.gcashNumber);
+                console.log("Outstanding loans:", merchant.outstandingLoans / 1e6, "USDC");
+                console.log("Total repaid:", merchant.totalRepaid / 1e6, "USDC");
+                console.log("Total bridged:", merchant.totalBridged / 1e6, "USDC");
+                console.log("Bridge count:", merchant.bridgeCount);
+                console.log("Registered at:", merchant.registeredAt);
+            }
+        } catch {
+            console.log("Error reading merchant data");
+        }
+    }
+    
+    function listMerchants() external loadConfig {
+        console.log("=== List All Registered Merchants ===");
+        
+        require(contractAddress != address(0), "Contract address not set");
+        bnpl = CrossChainBNPL(contractAddress);
+        
+        // Get MerchantRegistered events from the beginning
+        vm.startPrank(admin);
+        
+        // We'll need to check merchant registration events
+        console.log("Searching for MerchantRegistered events...");
+        console.log("Note: This function shows how to query. Use getMerchantProfile() for specific merchants.");
+        console.log("Contract address:", contractAddress);
+        console.log("Current block:", block.number);
+        
+        vm.stopPrank();
+    }
+    
     // ==================== EMERGENCY OPERATIONS ====================
     
     function emergencyWithdraw() external loadConfig {

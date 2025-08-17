@@ -197,7 +197,7 @@ contract CrossChainBNPL is Ownable, ReentrancyGuard, Pausable {
     event LoanCreated(uint256 indexed loanId, address indexed borrower, address indexed merchant, uint256 amount);
     event LoanRepaid(uint256 indexed loanId, address indexed borrower, uint256 amount, bool isFullRepayment);
     event CreditLimitChanged(address indexed borrower, uint256 newLimit);
-    event MerchantRegistered(address indexed merchant, string name);
+    event MerchantRegistered(address indexed merchant, string name, string location);
     event MerchantUpdated(address indexed merchant, string name, string location);
     
     /// @notice CCTP and Bridge events
@@ -441,7 +441,7 @@ contract CrossChainBNPL is Ownable, ReentrancyGuard, Pausable {
         if (repaymentAmount == 0) revert ZeroAmount();
 
         // Get current loan balance
-        (uint256 principal, uint256 interest, uint256 totalOwed) = getCurrentBalance(loanId);
+        (uint256 principal, , uint256 totalOwed) = getCurrentBalance(loanId);
         
         // Prevent overpayment (user protection)
         if (repaymentAmount > totalOwed) revert ExcessiveRepayment();
@@ -515,7 +515,7 @@ contract CrossChainBNPL is Ownable, ReentrancyGuard, Pausable {
             bridgeCount: 0
         });
         
-        emit MerchantRegistered(merchantAddress, name);
+        emit MerchantRegistered(merchantAddress, name, location);
     }
     
     /**

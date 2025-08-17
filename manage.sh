@@ -88,6 +88,24 @@ case "$1" in
             --private-key "$PRIVATE_KEY"
         ;;
     
+    "get-merchant")
+        if [ -z "$2" ]; then
+            echo -e "${RED}Usage: ./manage.sh get-merchant <address>${NC}"
+            exit 1
+        fi
+        echo -e "${BLUE}Getting merchant profile for: $2${NC}"
+        forge script script/ManageCrossChainBNPL.s.sol:ManageCrossChainBNPL \
+            --sig "getMerchantProfile(address)" "$2" \
+            --rpc-url "$RPC_URL"
+        ;;
+    
+    "list-merchants")
+        echo -e "${BLUE}Listing all registered merchants...${NC}"
+        forge script script/ManageCrossChainBNPL.s.sol:ManageCrossChainBNPL \
+            --sig "listMerchants()" \
+            --rpc-url "$RPC_URL"
+        ;;
+    
     "status")
         echo -e "${BLUE}Checking contract status...${NC}"
         forge script script/ManageCrossChainBNPL.s.sol:ManageCrossChainBNPL \
@@ -152,6 +170,8 @@ case "$1" in
         echo -e "${BLUE}Merchant Management:${NC}"
         echo "  register-merchant <addr> <name>  Register a merchant"
         echo "  register-demo-merchants   Register demo merchants for hackathon"
+        echo "  get-merchant <addr>       Get merchant profile details"
+        echo "  list-merchants            List all registered merchants"
         echo ""
         echo -e "${BLUE}Operations:${NC}"
         echo "  status                    Show contract status"

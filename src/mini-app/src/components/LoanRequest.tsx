@@ -9,7 +9,7 @@ import {
 } from "react";
 import { Button } from "@worldcoin/mini-apps-ui-kit-react";
 import { useSession } from "next-auth/react";
-import { MiniKit, VerificationLevel, Tokens } from "@worldcoin/minikit-js";
+import { MiniKit, VerificationLevel } from "@worldcoin/minikit-js";
 import { createPublicClient, http } from "viem";
 import { worldchain } from "viem/chains";
 import CrossChainBNPLABI from "@/abi/CrossChainBNPL.json";
@@ -292,7 +292,8 @@ export const LoanRequest = forwardRef<LoanRequestRef, LoanRequestProps>(
         // Step 1: Get World ID verification (Proof of Humanhood)
         const verifyPayload = {
           action:
-            process.env.NEXT_PUBLIC_WORLD_ID_ACTION_ID || "request_nano_loan",
+            process.env.NEXT_PUBLIC_WORLD_ID_ACTION_ID ||
+            "bnpl_purchase_request",
           signal: session.user.walletAddress,
           verification_level: VerificationLevel.Orb,
         };
@@ -309,29 +310,35 @@ export const LoanRequest = forwardRef<LoanRequestRef, LoanRequestProps>(
 
         console.log("✅ World ID verification successful!");
 
-        // Step 2: Submit loan request using MiniKit.commands.pay
-        const paymentPayload = {
-          reference: `loan-${Date.now()}`,
-          to: selectedMerchant as `0x${string}`,
-          tokens: [
+        // Step 2: Submit loan request to smart contract (proper BNPL flow)
+        // The contract will pay the merchant and create a debt for the user
+        const transactionPayload = {
+          transaction: [
             {
-              symbol: Tokens.USDC,
-              token_amount: loanAmountUSDC.toString(),
+              address: CONTRACT_ADDRESS,
+              abi: CrossChainBNPLABI,
+              functionName: "requestLoan",
+              args: [
+                selectedMerchant, // merchant address
+                loanAmountUSDC, // loan amount in USDC
+                session.user.username || "unknown", // borrower username
+                verifyResponse.nullifier_hash, // World ID nullifier
+                480, // World Chain domain (settlementDomain)
+                selectedMerchant, // settlement address (same as merchant)
+              ],
             },
           ],
-          description: `BNPL loan from ${merchantName}`,
         };
 
-        console.log("💳 Initiating MiniKit payment...");
-        const { finalPayload: payResponse } = await MiniKit.commandsAsync.pay(
-          paymentPayload
-        );
+        console.log("💳 Submitting loan request to contract...");
+        const { finalPayload: txResponse } =
+          await MiniKit.commandsAsync.sendTransaction(transactionPayload);
 
-        if (payResponse.status === "error") {
-          throw new Error(`Payment failed: ${payResponse.error_code}`);
+        if (txResponse.status === "error") {
+          throw new Error(`Loan request failed: ${txResponse.error_code}`);
         }
 
-        console.log("✅ Payment successful!");
+        console.log("✅ Loan request successful! Contract paid merchant.");
 
         // Wait for World overlay to close before callback
         setTimeout(() => {
@@ -395,7 +402,7 @@ export const LoanRequest = forwardRef<LoanRequestRef, LoanRequestProps>(
               Buy Now, Pay Later
             </h2>
             <p className="text-sm text-gray-600">
-              Cross-Chain BNPL with World ID verification
+              Get products instantly, repay later with low interest
             </p>
           </div>
 
@@ -543,7 +550,8 @@ export const LoanRequest = forwardRef<LoanRequestRef, LoanRequestProps>(
 
           {/* Helper Text */}
           <p className="text-xs text-gray-500 text-center">
-            Loan approval requires World ID verification for sybil resistance
+            Buy now, pay later! Contract pays merchant instantly, you repay
+            later with interest
           </p>
         </div>
       </div>
