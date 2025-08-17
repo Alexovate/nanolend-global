@@ -1,13 +1,14 @@
-'use client';
-import { MiniKitProvider } from '@worldcoin/minikit-js/minikit-provider';
-import { Session } from 'next-auth';
-import { SessionProvider } from 'next-auth/react';
-import dynamic from 'next/dynamic';
-import type { ReactNode } from 'react';
+"use client";
+import { MiniKitProvider } from "@worldcoin/minikit-js/minikit-provider";
+import { Session } from "next-auth";
+import { SessionProvider } from "next-auth/react";
+import dynamic from "next/dynamic";
+import type { ReactNode } from "react";
+import { Web3Provider } from "./Web3Provider";
 
 const ErudaProvider = dynamic(
-  () => import('@/providers/Eruda').then((c) => c.ErudaProvider),
-  { ssr: false },
+  () => import("@/providers/Eruda").then((c) => c.ErudaProvider),
+  { ssr: false }
 );
 
 // Define props for ClientProviders
@@ -34,9 +35,11 @@ export default function ClientProviders({
 }: ClientProvidersProps) {
   return (
     <ErudaProvider>
-      <MiniKitProvider>
-        <SessionProvider session={session}>{children}</SessionProvider>
-      </MiniKitProvider>
+      <Web3Provider>
+        <MiniKitProvider>
+          <SessionProvider session={session}>{children}</SessionProvider>
+        </MiniKitProvider>
+      </Web3Provider>
     </ErudaProvider>
   );
 }
