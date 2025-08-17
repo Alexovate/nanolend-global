@@ -6,12 +6,27 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+
+# Package manager lock files (keep mini-app lock file)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+!src/mini-app/package-lock.json
 
 # Build outputs
 .next/
 out/
 build/
 dist/
+*.tsbuildinfo
+
+# Mini-app specific ignores
+src/mini-app/.next/
+src/mini-app/out/
+src/mini-app/node_modules/
+src/mini-app/.DS_Store
 
 # Environment variables
 .env
@@ -19,6 +34,11 @@ dist/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Web3 and API keys
+.env.example
+wallet-private-keys.txt
+seed-phrases.txt
 
 # IDE and editor files
 .vscode/
@@ -49,6 +69,20 @@ pids
 # Coverage directory used by tools like istanbul
 coverage/
 *.lcov
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Vercel deployment
+.vercel
+
+# Tailwind CSS
+.tailwindcss-cache
+
+# World App specific
+.world-app-cache/
+minikit-cache/
 
 # Temporary folders
 tmp/
