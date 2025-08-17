@@ -36,7 +36,6 @@ src/mini-app/.DS_Store
 .env.production.local
 
 # Web3 and API keys
-.env.example
 wallet-private-keys.txt
 seed-phrases.txt
 
