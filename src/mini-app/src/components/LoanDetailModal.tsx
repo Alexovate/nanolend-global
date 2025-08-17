@@ -186,7 +186,8 @@ export const LoanDetailModal = ({
     } finally {
       setIsLoading(false);
     }
-  }, [loan, walletAddress, hasSetInitialAmount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loan?.loanId, walletAddress]); // Intentionally exclude hasSetInitialAmount to prevent infinite recreation
 
   // Load balance when modal opens or loan changes
   useEffect(() => {
@@ -194,7 +195,8 @@ export const LoanDetailModal = ({
       setHasSetInitialAmount(false); // Reset for new loan
       loadCurrentBalance();
     }
-  }, [isOpen, loan, loadCurrentBalance]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, loan?.loanId]); // Only depend on isOpen and loan ID, not the function itself
 
   // Repay loan function with permit2
   const handleRepayLoan = async () => {

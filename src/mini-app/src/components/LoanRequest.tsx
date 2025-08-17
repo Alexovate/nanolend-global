@@ -116,11 +116,21 @@ export const LoanRequest = forwardRef<LoanRequestRef, LoanRequestProps>(
               const merchantData = (await publicClient.readContract({
                 address: CONTRACT_ADDRESS,
                 abi: CrossChainBNPLABI,
-                functionName: "merchants",
+                functionName: "getMerchantProfile",
                 args: [merchantAddress],
-              })) as [boolean, bigint, bigint, string, string, bigint];
+              })) as {
+                isActive: boolean;
+                name: string;
+                location: string;
+                gcashNumber: string;
+                registeredAt: bigint;
+                outstandingLoans: bigint;
+                totalRepaid: bigint;
+                totalBridged: bigint;
+                bridgeCount: bigint;
+              };
 
-              const [isActive, , , name, location] = merchantData;
+              const { isActive, name, location } = merchantData;
 
               if (isActive && name) {
                 return {
@@ -323,7 +333,7 @@ export const LoanRequest = forwardRef<LoanRequestRef, LoanRequestProps>(
                 loanAmountUSDC, // loan amount in USDC
                 session.user.username || "unknown", // borrower username
                 verifyResponse.nullifier_hash, // World ID nullifier
-                480, // World Chain domain (settlementDomain)
+                0, // World Chain domain (settlementDomain)
                 selectedMerchant, // settlement address (same as merchant)
               ],
             },
