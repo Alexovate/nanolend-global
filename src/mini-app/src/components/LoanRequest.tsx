@@ -7,6 +7,8 @@ import {
   useWaitForTransactionReceipt,
 } from "wagmi";
 import { parseUnits } from "viem";
+import { MiniKit, VerificationLevel } from "@worldcoin/minikit-js";
+import { useSession } from "next-auth/react";
 import CrossChainBNPLABI from "@/abi/CrossChainBNPL.json";
 
 // Contract configuration
@@ -34,11 +36,17 @@ const PRESET_AMOUNTS = ["1", "2", "3", "5"];
 
 export function LoanRequest() {
   const { address } = useAccount();
+  const { data: session } = useSession();
   const [amount, setAmount] = useState("2");
   const [selectedMerchant, setSelectedMerchant] = useState(DEMO_MERCHANTS[0]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const { writeContract, data: hash, error } = useWriteContract();
+  const {
+    writeContract,
+    data: hash,
+    error: contractError,
+  } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess: isConfirmed } =
     useWaitForTransactionReceipt({
@@ -46,27 +54,68 @@ export function LoanRequest() {
     });
 
   const handleRequestLoan = async () => {
-    if (!address || !amount || !selectedMerchant) return;
+    if (!address || !amount || !selectedMerchant || !session?.user?.username)
+      return;
 
     try {
       setIsLoading(true);
+      setError(null);
 
+      console.log("Requesting loan with World ID verification:", {
+        merchant: selectedMerchant,
+        amount: amount,
+        userAddress: address,
+        username: session.user.username,
+      });
+
+      // Step 1: Get World ID verification (Proof of Humanhood)
+      const verifyPayload = {
+        action:
+          process.env.NEXT_PUBLIC_WORLD_ID_ACTION_ID || "request_nano_loan",
+        signal: address, // Use wallet address as signal
+        verification_level: VerificationLevel.Orb, // Highest security level
+      };
+
+      console.log("Starting World ID verification...");
+      const { finalPayload: verifyResponse } =
+        await MiniKit.commandsAsync.verify(verifyPayload);
+
+      if (verifyResponse.status === "error") {
+        // Handle user cancellation gracefully
+        const errorCode = String(verifyResponse.error_code).toLowerCase();
+        if (errorCode.includes("cancel") || errorCode.includes("user")) {
+          console.log(
+            "User cancelled World ID verification:",
+            verifyResponse.error_code
+          );
+          return; // Exit without showing error
+        }
+        throw new Error(
+          `World ID verification failed: ${verifyResponse.error_code}`
+        );
+      }
+
+      console.log("✅ World ID verification successful:", verifyResponse);
+
+      // Step 2: Submit loan request to smart contract with enhanced parameters
       const amountWei = parseUnits(amount, USDC_DECIMALS);
 
       writeContract({
         address: CONTRACT_ADDRESS,
-        abi: CrossChainBNPLABI.abi,
+        abi: CrossChainBNPLABI,
         functionName: "requestLoan",
         args: [
           selectedMerchant.address,
           amountWei,
-          `world-id-${Date.now()}`, // World ID nullifier (demo)
+          session.user.username || "anonymous", // Username for merchant dashboard
+          verifyResponse.nullifier_hash, // Use actual World ID nullifier
           0, // WORLD_CHAIN_DOMAIN (settlement on World Chain)
           selectedMerchant.address, // Settlement address
         ],
       });
     } catch (err) {
       console.error("Loan request error:", err);
+      setError(err instanceof Error ? err.message : "Loan request failed");
     } finally {
       setIsLoading(false);
     }
@@ -142,24 +191,28 @@ export function LoanRequest() {
       {/* Request Button */}
       <button
         onClick={handleRequestLoan}
-        disabled={!address || !amount || isProcessing}
+        disabled={
+          !address || !session?.user?.username || !amount || isProcessing
+        }
         className={`w-full py-4 rounded-lg font-semibold text-white transition-all ${
-          !address || !amount || isProcessing
+          !address || !session?.user?.username || !amount || isProcessing
             ? "bg-gray-400 cursor-not-allowed"
             : "bg-blue-600 hover:bg-blue-700 active:scale-95"
         }`}
       >
         {isProcessing
-          ? "Processing..."
+          ? "Processing World ID..."
           : !address
           ? "Connect Wallet"
+          : !session?.user?.username
+          ? "Sign In with World ID"
           : `Request $${amount} USDC Loan`}
       </button>
 
       {/* Status Messages */}
       {isConfirming && (
         <div className="text-center text-sm text-blue-600">
-          Confirming transaction...
+          ✅ World ID verified! Confirming transaction...
         </div>
       )}
 
@@ -171,7 +224,13 @@ export function LoanRequest() {
 
       {error && (
         <div className="text-center text-sm text-red-600">
-          ❌ Error: {error.message}
+          ❌ Error: {error}
+        </div>
+      )}
+
+      {contractError && (
+        <div className="text-center text-sm text-red-600">
+          ❌ Contract Error: {contractError.message}
         </div>
       )}
 

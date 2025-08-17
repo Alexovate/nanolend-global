@@ -27,7 +27,7 @@ const worldChainConfig = {
 
 // Create Wagmi config
 const config = createConfig({
-  chains: [worldChainConfig as any],
+  chains: [worldChainConfig],
   transports: {
     [worldChainConfig.id]: http(),
   },

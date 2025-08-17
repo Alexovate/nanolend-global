@@ -1,6 +1,6 @@
-import { MiniKit } from '@worldcoin/minikit-js';
-import { signIn } from 'next-auth/react';
-import { getNewNonces } from './server-helpers';
+import { MiniKit } from "@worldcoin/minikit-js";
+import { signIn } from "next-auth/react";
+import { getNewNonces } from "./server-helpers";
 
 /**
  * Authenticates a user via their wallet using a nonce-based challenge-response mechanism.
@@ -19,25 +19,25 @@ export const walletAuth = async () => {
     nonce,
     expirationTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     notBefore: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    statement: `Authenticate (${crypto.randomUUID().replace(/-/g, '')}).`,
+    statement: `Authenticate (${crypto.randomUUID().replace(/-/g, "")}).`,
   });
-  console.log('Result', result);
+
+  console.log("Wallet auth result:", result);
+
   if (!result) {
-    throw new Error('No response from wallet auth');
+    throw new Error("No response from wallet auth");
   }
 
-  if (result.finalPayload.status !== 'success') {
+  if (result.finalPayload.status !== "success") {
     console.error(
-      'Wallet authentication failed',
-      result.finalPayload.error_code,
+      "Wallet authentication failed",
+      result.finalPayload.error_code
     );
     return;
-  } else {
-    console.log(result.finalPayload);
   }
 
-  await signIn('credentials', {
-    redirectTo: '/home',
+  await signIn("credentials", {
+    redirectTo: "/home",
     nonce,
     signedNonce,
     finalPayloadJson: JSON.stringify(result.finalPayload),

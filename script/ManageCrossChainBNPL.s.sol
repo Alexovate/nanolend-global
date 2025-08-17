@@ -153,7 +153,7 @@ contract ManageCrossChainBNPL is Script {
         bnpl = CrossChainBNPL(contractAddress);
         
         vm.startBroadcast(admin);
-        bnpl.registerMerchant(merchantAddress, name, "+639171234567");
+        bnpl.registerMerchant(merchantAddress, name, "Manila, Philippines", "+639171234567");
         vm.stopBroadcast();
         
         console.log("Merchant registered successfully!");
@@ -180,7 +180,7 @@ contract ManageCrossChainBNPL is Script {
         vm.startBroadcast(admin);
         
         for (uint256 i = 0; i < merchants.length; i++) {
-            bnpl.registerMerchant(merchants[i], names[i], "+639171234567");
+            bnpl.registerMerchant(merchants[i], names[i], "Manila, Philippines", "+639171234567");
             console.log("Registered:", names[i], "at", merchants[i]);
         }
         

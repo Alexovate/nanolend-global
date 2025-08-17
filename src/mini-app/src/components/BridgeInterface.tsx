@@ -48,7 +48,7 @@ export function BridgeInterface() {
 
       writeContract({
         address: CONTRACT_ADDRESS,
-        abi: CrossChainBNPLABI.abi,
+        abi: CrossChainBNPLABI,
         functionName: "bridgeToEthereum",
         args: [amountWei, ethereumAddress as `0x${string}`],
       });
@@ -250,7 +250,7 @@ export function BridgeInterface() {
               </h5>
               <p className="text-gray-600">
                 Your USDC is being transferred to Ethereum via Circle CCTP.
-                You'll receive it at:{" "}
+                You&apos;ll receive it at:{" "}
                 <span className="font-mono text-xs break-all">
                   {ethereumAddress}
                 </span>

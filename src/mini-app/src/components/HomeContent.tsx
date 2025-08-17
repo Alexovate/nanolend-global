@@ -1,18 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Page } from "@/components/PageLayout";
-import { LoanDashboard } from "@/components/LoanDashboard";
+import { LoanDashboard, LoanDashboardRef } from "@/components/LoanDashboard";
 import { BridgeInterface } from "@/components/BridgeInterface";
 import { LoanRequest } from "@/components/LoanRequest";
+import { LoanDetailModal } from "@/components/LoanDetailModal";
+import { LoanSummary } from "@/types/loan";
 import { Marble, TopBar } from "@worldcoin/mini-apps-ui-kit-react";
 
 interface HomeContentProps {
-  session: any;
+  session: {
+    user?: {
+      id?: string;
+      username?: string;
+      profilePictureUrl?: string;
+    };
+  } | null;
 }
 
 export function HomeContent({ session }: HomeContentProps) {
   const [activeTab, setActiveTab] = useState<"loans" | "bridge">("loans");
+  const [selectedLoan, setSelectedLoan] = useState<LoanSummary | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const loanDashboardRef = useRef<LoanDashboardRef>(null);
+
+  const handleLoanSelect = (loan: LoanSummary) => {
+    setSelectedLoan(loan);
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedLoan(null);
+  };
+
+  const handleRepaymentSuccess = (amount: string, loanId: string) => {
+    console.log("✅ Repayment successful:", { amount, loanId });
+    // Refresh the dashboard to show updated data
+    loanDashboardRef.current?.refreshData();
+  };
 
   return (
     <>
@@ -22,9 +49,9 @@ export function HomeContent({ session }: HomeContentProps) {
           endAdornment={
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold capitalize">
-                {session?.user.username}
+                {session?.user?.username}
               </p>
-              <Marble src={session?.user.profilePictureUrl} className="w-12" />
+              <Marble src={session?.user?.profilePictureUrl} className="w-12" />
             </div>
           }
         />
@@ -85,7 +112,11 @@ export function HomeContent({ session }: HomeContentProps) {
                     </p>
                   </div>
 
-                  <LoanDashboard />
+                  <LoanDashboard
+                    ref={loanDashboardRef}
+                    onLoanSelect={handleLoanSelect}
+                    onRepaymentSuccess={handleRepaymentSuccess}
+                  />
                   <LoanRequest />
                 </div>
 
@@ -135,6 +166,16 @@ export function HomeContent({ session }: HomeContentProps) {
           </div>
         </div>
       </Page.Main>
+
+      {/* Loan Detail Modal */}
+      {selectedLoan && (
+        <LoanDetailModal
+          loan={selectedLoan}
+          isOpen={isModalOpen}
+          onClose={handleModalClose}
+          onRepaymentSuccess={handleRepaymentSuccess}
+        />
+      )}
     </>
   );
 }
