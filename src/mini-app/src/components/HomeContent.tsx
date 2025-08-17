@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { Page } from "@/components/PageLayout";
 import { LoanDashboard, LoanDashboardRef } from "@/components/LoanDashboard";
 import { BridgeInterface } from "@/components/BridgeInterface";
-import { LoanRequest } from "@/components/LoanRequest";
+import { LoanRequest, LoanRequestRef } from "@/components/LoanRequest";
 import { LoanDetailModal } from "@/components/LoanDetailModal";
 import { LoanSummary } from "@/types/loan";
 import { Marble, TopBar } from "@worldcoin/mini-apps-ui-kit-react";
@@ -24,6 +24,7 @@ export function HomeContent({ session }: HomeContentProps) {
   const [selectedLoan, setSelectedLoan] = useState<LoanSummary | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const loanDashboardRef = useRef<LoanDashboardRef>(null);
+  const loanRequestRef = useRef<LoanRequestRef>(null);
 
   const handleLoanSelect = (loan: LoanSummary) => {
     setSelectedLoan(loan);
@@ -37,8 +38,16 @@ export function HomeContent({ session }: HomeContentProps) {
 
   const handleRepaymentSuccess = (amount: string, loanId: string) => {
     console.log("✅ Repayment successful:", { amount, loanId });
-    // Refresh the dashboard to show updated data
+    // Refresh both dashboard and credit data
     loanDashboardRef.current?.refreshData();
+    loanRequestRef.current?.refreshCredit();
+  };
+
+  const handleTransactionSuccess = (amount: string, merchant: string) => {
+    console.log("✅ Loan transaction successful:", { amount, merchant });
+    // Refresh both dashboard and credit data
+    loanDashboardRef.current?.refreshData();
+    loanRequestRef.current?.refreshCredit();
   };
 
   return (
@@ -117,7 +126,10 @@ export function HomeContent({ session }: HomeContentProps) {
                     onLoanSelect={handleLoanSelect}
                     onRepaymentSuccess={handleRepaymentSuccess}
                   />
-                  <LoanRequest />
+                  <LoanRequest
+                    ref={loanRequestRef}
+                    onTransactionSuccess={handleTransactionSuccess}
+                  />
                 </div>
 
                 {/* Quick Bridge CTA */}

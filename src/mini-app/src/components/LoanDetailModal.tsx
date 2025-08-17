@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPublicClient, http } from "viem";
 import { worldchain } from "viem/chains";
-import { useAccount } from "wagmi";
-import { MiniKit } from "@worldcoin/minikit-js";
+import { Button } from "@worldcoin/mini-apps-ui-kit-react";
+import { MiniKit, Tokens } from "@worldcoin/minikit-js";
 import { useSession } from "next-auth/react";
 import CrossChainBNPLABI from "@/abi/CrossChainBNPL.json";
 import {
@@ -39,7 +39,6 @@ export const LoanDetailModal = ({
   onRepaymentSuccess,
 }: LoanDetailModalProps) => {
   const { data: session } = useSession();
-  const { address } = useAccount();
   const [currentBalance, setCurrentBalance] = useState<{
     principal: bigint;
     interest: bigint;
@@ -50,13 +49,12 @@ export const LoanDetailModal = ({
   const [error, setError] = useState<string | null>(null);
   const [isRepaying, setIsRepaying] = useState(false);
   const [repaymentAmount, setRepaymentAmount] = useState<string>("");
-  const [balanceExplanation, setBalanceExplanation] = useState<string>("");
+  const [, setBalanceExplanation] = useState<string>("");
   const [hasSetInitialAmount, setHasSetInitialAmount] =
     useState<boolean>(false);
 
   // Use session wallet address if available, fallback to wagmi
-  const walletAddress = (session?.user?.walletAddress ||
-    address) as `0x${string}`;
+  const walletAddress = session?.user?.walletAddress as `0x${string}`;
 
   // Retry helper function with exponential backoff
   const retryWithBackoff = async function <T>(
@@ -108,7 +106,7 @@ export const LoanDetailModal = ({
       const [loanBalanceData, walletUSDCBalance] = await Promise.all([
         retryWithBackoff(async () => {
           return await publicClient.readContract({
-            address: CONTRACT_ADDRESS as `0x${string}`,
+            address: CONTRACT_ADDRESS,
             abi: CrossChainBNPLABI,
             functionName: "getCurrentBalance",
             args: [loan.loanId],
@@ -116,7 +114,7 @@ export const LoanDetailModal = ({
         }),
         retryWithBackoff(async () => {
           return await publicClient.readContract({
-            address: WORLD_CHAIN_USDC_ADDRESS as `0x${string}`,
+            address: WORLD_CHAIN_USDC_ADDRESS,
             abi: [
               {
                 name: "balanceOf",
@@ -138,7 +136,7 @@ export const LoanDetailModal = ({
       });
 
       // Parse loan balance data
-      const [principal, interest, total] = loanBalanceData as [
+      const [principal, interest, totalOwed] = loanBalanceData as [
         bigint,
         bigint,
         bigint
@@ -147,40 +145,37 @@ export const LoanDetailModal = ({
       setCurrentBalance({
         principal,
         interest,
-        total,
+        total: totalOwed,
       });
 
       setWalletBalance(walletUSDCBalance as bigint);
 
-      // Smart default amount setting
-      if (!hasSetInitialAmount && walletUSDCBalance && total) {
-        const totalUSD = Number(total) / 1_000_000;
-        const walletUSD = Number(walletUSDCBalance) / 1_000_000;
+      // Create balance explanation
+      const principalUSD = Number(principal) / 1_000_000;
+      const interestUSD = Number(interest) / 1_000_000;
+      const totalUSD = Number(totalOwed) / 1_000_000;
+      const walletUSD = Number(walletUSDCBalance as bigint) / 1_000_000;
 
-        if (walletUSD >= totalUSD) {
-          // User has enough for full repayment
-          setRepaymentAmount(totalUSD.toFixed(6));
-          setBalanceExplanation(
-            `💰 You have enough USDC to pay the full amount (Wallet: $${walletUSD.toFixed(
-              6
-            )})`
-          );
-        } else if (walletUSD > 0) {
-          // User has some USDC but not enough for full repayment
-          setRepaymentAmount(walletUSD.toFixed(6));
-          setBalanceExplanation(
-            `⚠️ Using your available USDC balance. You need $${(
-              totalUSD - walletUSD
-            ).toFixed(6)} more for full repayment.`
-          );
-        } else {
-          // User has no USDC
-          setRepaymentAmount("");
-          setBalanceExplanation(
-            "❌ No USDC in wallet. Please get USDC to make repayment."
-          );
-        }
+      let explanation = `Loan Balance:\n• Principal: $${principalUSD.toFixed(
+        6
+      )}\n• Interest: $${interestUSD.toFixed(
+        6
+      )}\n• Total Due: $${totalUSD.toFixed(
+        6
+      )}\n\nYour USDC Balance: $${walletUSD.toFixed(6)}`;
 
+      if (totalOwed > (walletUSDCBalance as bigint)) {
+        explanation += "\n\n⚠️ Insufficient USDC balance for full repayment.";
+      } else {
+        explanation += "\n\n✅ Sufficient balance available.";
+      }
+
+      setBalanceExplanation(explanation);
+
+      // Auto-set full repayment amount if not already set
+      if (!hasSetInitialAmount && totalOwed > 0) {
+        const fullAmount = Number(totalOwed) / 1_000_000;
+        setRepaymentAmount(fullAmount.toFixed(6));
         setHasSetInitialAmount(true);
       }
     } catch (error) {
@@ -192,6 +187,14 @@ export const LoanDetailModal = ({
       setIsLoading(false);
     }
   }, [loan, walletAddress, hasSetInitialAmount]);
+
+  // Load balance when modal opens or loan changes
+  useEffect(() => {
+    if (isOpen && loan) {
+      setHasSetInitialAmount(false); // Reset for new loan
+      loadCurrentBalance();
+    }
+  }, [isOpen, loan, loadCurrentBalance]);
 
   // Repay loan function with permit2
   const handleRepayLoan = async () => {
@@ -209,155 +212,152 @@ export const LoanDetailModal = ({
         walletAddress,
       });
 
-      // Prepare permit2 transaction for World App
-      const deadline = Math.floor((Date.now() + 30 * 60 * 1000) / 1000); // 30 minutes
-      const nonce = Date.now().toString();
+      console.log("💳 Initiating repayment via MiniKit pay...");
 
-      console.log("📝 Sending permit2 transaction to World App...");
-
-      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
-        transaction: [
+      // Use MiniKit pay for loan repayment (simpler approach)
+      const { finalPayload } = await MiniKit.commandsAsync.pay({
+        reference: `repay-${loan.loanId}-${Date.now()}`,
+        to: CONTRACT_ADDRESS,
+        tokens: [
           {
-            address: CONTRACT_ADDRESS,
-            abi: CrossChainBNPLABI,
-            functionName: "repayLoan",
-            args: [
-              loan.loanId,
-              // PermitTransferFrom struct
-              {
-                permitted: {
-                  token: WORLD_CHAIN_USDC_ADDRESS,
-                  amount: repaymentUSDC.toString(),
-                },
-                nonce: nonce,
-                deadline: deadline.toString(),
-              },
-              // SignatureTransferDetails struct
-              {
-                to: CONTRACT_ADDRESS,
-                requestedAmount: repaymentUSDC.toString(),
-              },
-              "PERMIT2_SIGNATURE_PLACEHOLDER_0",
-            ],
+            symbol: Tokens.USDC,
+            token_amount: repaymentUSDC.toString(),
           },
         ],
-        permit2: [
-          {
-            permitted: {
-              token: WORLD_CHAIN_USDC_ADDRESS,
-              amount: repaymentUSDC.toString(),
-            },
-            nonce: nonce,
-            deadline: deadline.toString(),
-            spender: CONTRACT_ADDRESS,
-          },
-        ],
+        description: `Loan repayment for loan #${loan.loanId}`,
       });
 
-      console.log("📱 World App response:", finalPayload);
-
-      if (finalPayload.status === "success") {
-        console.log("✅ Repayment successful!");
-        onRepaymentSuccess(repaymentAmount, loan.loanId.toString());
-        onClose();
-      } else {
-        throw new Error(
-          `Transaction failed: ${finalPayload.error_code || "Unknown error"}`
-        );
+      if (finalPayload.status === "error") {
+        throw new Error(`Repayment failed: ${finalPayload.error_code}`);
       }
-    } catch (error) {
-      console.error("❌ Repayment failed:", error);
-      setError(error instanceof Error ? error.message : "Repayment failed");
+
+      console.log("✅ Repayment completed successfully!");
+      console.log("  - Transaction ID:", finalPayload.transaction_id || "N/A");
+
+      // Close modal and notify parent
+      onClose();
+      onRepaymentSuccess(
+        parseFloat(repaymentAmount).toFixed(2),
+        loan.loanId.toString()
+      );
+
+      // Refresh balance after successful repayment
+      setTimeout(async () => {
+        await loadCurrentBalance();
+      }, 2000);
+    } catch (err) {
+      console.error("❌ Repayment error:", err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+
+      // Enhanced error messages for permit2 repayment
+      let displayError = `Repayment error: ${errorMessage}`;
+
+      if (errorMessage.includes("Payment failed")) {
+        displayError =
+          "Payment failed. Please check your USDC balance and try again.";
+      } else if (errorMessage.includes("insufficient")) {
+        displayError = "Insufficient USDC balance for payment.";
+      } else if (errorMessage.includes("payment_failed")) {
+        displayError =
+          "Payment failed. Please check your USDC balance and try again.";
+      } else if (errorMessage.includes("InvalidToken")) {
+        displayError = "Invalid token address. Please contact support.";
+      } else if (errorMessage.includes("PermitExpired")) {
+        displayError = "Payment permit expired. Please try again.";
+      } else if (errorMessage.includes("InvalidRecipient")) {
+        displayError = "Invalid recipient address. Please contact support.";
+      } else if (
+        errorMessage.includes("already repaid") ||
+        errorMessage.includes("LoanNotActive")
+      ) {
+        displayError = "This loan has already been repaid.";
+      } else if (errorMessage.includes("RepaymentsDisabled")) {
+        displayError =
+          "Repayments are temporarily disabled. Please try again later.";
+      } else if (errorMessage.includes("network")) {
+        displayError =
+          "Network error. Please check your connection and try again.";
+      } else if (errorMessage.includes("timeout")) {
+        displayError = "Payment timed out. Please try again.";
+      }
+
+      setError(displayError);
     } finally {
       setIsRepaying(false);
     }
   };
 
-  useEffect(() => {
-    if (isOpen && loan) {
-      setHasSetInitialAmount(false); // Reset for new modal open
-      loadCurrentBalance();
-    }
-  }, [isOpen, loan, loadCurrentBalance]);
-
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex justify-between items-start">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">
-                Repay Loan #{loan.loanId.toString()}
-              </h3>
-              <p className="text-sm text-gray-600">
-                {loan.merchantName} • {loan.merchantLocation}
-              </p>
-            </div>
+    <div className="fixed inset-0 bg-white z-50 h-screen w-screen overflow-hidden">
+      <div className="h-full overflow-y-auto overscroll-none">
+        <div className="p-6 pt-8 pb-8 max-w-md mx-auto w-full min-h-full flex flex-col justify-start">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-gray-900">Loan Repayment</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
             >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              ✕
             </button>
           </div>
-        </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {isLoading && (
-            <div className="text-center">
-              <div className="animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
-                <div className="h-8 bg-gray-200 rounded w-1/2 mx-auto mt-2"></div>
-              </div>
-              <p className="text-sm text-gray-600 mt-2">
-                Loading loan details...
-              </p>
-            </div>
-          )}
-
+          {/* Error Display */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-red-800">{error}</p>
-              <button
-                onClick={loadCurrentBalance}
-                className="mt-2 text-sm text-red-600 hover:text-red-800"
-              >
-                Retry
-              </button>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+              <p className="text-red-800 text-sm">❌ {error}</p>
             </div>
           )}
 
-          {currentBalance && walletBalance !== null && (
-            <>
-              {/* Loan Balance Breakdown */}
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
-                <h4 className="font-medium text-gray-900">Current Balance</h4>
+          {/* Loan Details Card */}
+          <div className="bg-gray-50 rounded-xl p-5 mb-6 border border-gray-100">
+            <h3 className="font-semibold text-gray-900 mb-3">Loan Details</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Merchant:</span>
+                <span className="font-medium">{loan.merchantName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Location:</span>
+                <span className="font-medium">{loan.merchantLocation}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Loan ID:</span>
+                <span className="font-medium">#{loan.loanId.toString()}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Balance Information */}
+          <div className="bg-blue-50 rounded-xl p-5 mb-6 border border-blue-100">
+            {isLoading ? (
+              <div className="text-center py-4">
+                <div className="animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto mb-2"></div>
+                  <div className="h-8 bg-gray-200 rounded w-1/2 mx-auto mt-2"></div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2">
+                  Loading loan details...
+                </p>
+              </div>
+            ) : currentBalance ? (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-blue-900 mb-3">
+                  Current Balance
+                </h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Principal:</span>
-                    <span className="font-medium">
+                    <span className="text-blue-700">Principal:</span>
+                    <span className="font-medium text-blue-900">
                       {usdcToUSDDisplayPrecise(currentBalance.principal)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Interest:</span>
-                    <span className="font-medium">
+                    <span className="text-blue-700">Interest:</span>
+                    <span className="font-medium text-blue-900">
                       {usdcToUSDDisplayPrecise(currentBalance.interest)}
                     </span>
                   </div>
@@ -371,32 +371,42 @@ export const LoanDetailModal = ({
                   </div>
                 </div>
               </div>
-
-              {/* Wallet Balance */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-blue-600 font-medium">
-                    Your USDC Balance:
-                  </span>
-                  <span className="font-bold text-blue-900">
-                    {usdcToUSDDisplayPrecise(walletBalance)}
-                  </span>
-                </div>
+            ) : (
+              <div className="text-center py-4 text-red-600">
+                Failed to load balance. Please refresh this page.
               </div>
+            )}
+          </div>
 
-              {/* Repayment Amount Input */}
-              <div className="space-y-3">
+          {/* Wallet Balance */}
+          {walletBalance !== null && (
+            <div className="bg-green-50 rounded-lg p-3 mb-6 border border-green-200">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-green-700">
+                  Your USDC Balance:
+                </span>
+                <span className="font-semibold text-green-900">
+                  {usdcToUSDDisplayPrecise(walletBalance)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Repayment Amount Input */}
+          {currentBalance && (
+            <div className="space-y-4 mb-6">
+              <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
-                  Repayment Amount
+                  Repayment Amount (USD)
                 </label>
                 <input
                   type="number"
+                  value={repaymentAmount}
+                  onChange={(e) => setRepaymentAmount(e.target.value)}
                   step="0.000001"
                   min="0"
                   max={Number(currentBalance.total) / 1_000_000}
-                  value={repaymentAmount}
-                  onChange={(e) => setRepaymentAmount(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="0.000000"
                 />
 
@@ -408,7 +418,7 @@ export const LoanDetailModal = ({
                         (Number(currentBalance.total) / 1_000_000) * 0.25;
                       setRepaymentAmount(quarterAmount.toFixed(6));
                     }}
-                    className="py-2 px-3 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                    className="px-3 py-1 text-xs border border-gray-300 rounded bg-gray-50 hover:bg-gray-100 transition-colors"
                   >
                     25%
                   </button>
@@ -418,7 +428,7 @@ export const LoanDetailModal = ({
                         (Number(currentBalance.total) / 1_000_000) * 0.5;
                       setRepaymentAmount(halfAmount.toFixed(6));
                     }}
-                    className="py-2 px-3 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                    className="px-3 py-1 text-xs border border-gray-300 rounded bg-gray-50 hover:bg-gray-100 transition-colors"
                   >
                     50%
                   </button>
@@ -428,22 +438,15 @@ export const LoanDetailModal = ({
                         Number(currentBalance.total) / 1_000_000;
                       setRepaymentAmount(fullAmount.toFixed(6));
                     }}
-                    className="py-2 px-3 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+                    className="px-3 py-1 text-xs border border-gray-300 rounded bg-blue-50 hover:bg-blue-100 transition-colors text-blue-700 font-medium"
                   >
                     Full
                   </button>
                 </div>
-
-                {/* Balance Explanation */}
-                {balanceExplanation && (
-                  <div className="text-xs text-gray-600 bg-gray-50 rounded-lg p-3">
-                    {balanceExplanation}
-                  </div>
-                )}
               </div>
 
               {/* Repay Button */}
-              <button
+              <Button
                 onClick={handleRepayLoan}
                 disabled={
                   !repaymentAmount ||
@@ -452,30 +455,26 @@ export const LoanDetailModal = ({
                     Number(currentBalance.total) / 1_000_000 ||
                   isRepaying
                 }
-                className={`w-full py-4 rounded-lg font-semibold text-white transition-all ${
-                  !repaymentAmount ||
-                  parseFloat(repaymentAmount) <= 0 ||
-                  parseFloat(repaymentAmount) >
-                    Number(currentBalance.total) / 1_000_000 ||
-                  isRepaying
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-green-600 hover:bg-green-700 active:scale-95"
-                }`}
+                className="w-full py-4"
               >
                 {isRepaying
                   ? "Processing Repayment..."
                   : `Repay $${parseFloat(repaymentAmount || "0").toFixed(
                       6
                     )} USDC`}
-              </button>
+              </Button>
 
-              {/* Info Footer */}
-              <div className="text-center text-xs text-gray-500 space-y-1">
-                <p>🔒 Secured by World ID • ⚡ Instant via Permit2</p>
-                <p>💳 No approval needed • 🏦 Direct from your wallet</p>
-              </div>
-            </>
+              {/* Helper Text */}
+              <p className="text-xs text-gray-500 text-center">
+                Repayment uses MiniKit for secure transactions
+              </p>
+            </div>
           )}
+
+          {/* Close Button */}
+          <Button onClick={onClose} variant="secondary" className="w-full mt-4">
+            Close
+          </Button>
         </div>
       </div>
     </div>
