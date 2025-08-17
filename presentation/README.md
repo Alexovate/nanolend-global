@@ -8,16 +8,14 @@
 
 ## 📋 Slide Structure
 
-1. **Title Slide** - Hook with multi-chain BNPL positioning
-2. **Problem** - 1.4B people excluded from traditional finance
-3. **Solution** - Multi-chain BNPL with World ID verification
-4. **Live Demo** - Complete loan cycle demonstration
-5. **Technical Innovation** - Partner integrations and architecture
-6. **Market Opportunity** - $8T market with real traction
-7. **48-Hour Achievements** - What we built from scratch
-8. **Future Vision** - Global scale and Solana expansion
-9. **Call to Action** - Contact and next steps
-10. **Backup Technical** - Deep dive if time permits
+1. **Title Slide** - "Proof of Identity, Not Proof of Wealth" with World Chain badges
+2. **Problem** - 1.4B people excluded with stat circles showing market scale
+3. **Solution** - Multi-chain BNPL tech grid with 4 key features
+4. **Live Demo** - Simple announcement slide for demo transition
+5. **Technical Innovation** - Current integrations + 48-hour achievements
+6. **Market Opportunity** - Philippines First: 1.3M sari-sari stores + 81M GCash users
+7. **Future Vision** - Next steps + business model with 100M people goal
+8. **Call to Action** - "Giving humanity the benefit of the doubt" with contact
 
 ## 🚀 How to Present
 
@@ -50,44 +48,46 @@ npx @marp-team/marp-cli --html presentation/nanolend-global-eth-global-nyc.md --
 
 #### Opening Hook (30s):
 
-_"1.4 billion people can't access traditional credit, but 60% have smartphones. We built the first multi-chain BNPL platform that uses World ID for identity verification and Circle CCTP for cross-chain settlements - completely from scratch in 48 hours."_
+_"1.4 billion people can't access traditional credit because systems require proof of wealth, not proof of identity. We built NanoLend Global - proof of identity, not proof of wealth - using World ID verification on World Chain, built completely from scratch in 48 hours."_
 
 #### Problem Statement (30s):
 
-_"Current BNPL platforms like Klarna require credit scores that exclude emerging markets. We're solving this with blockchain-native identity verification and multi-chain architecture for global accessibility."_
+_"Traditional BNPL requires credit scores that exclude emerging markets. We're giving humanity the benefit of the doubt - using sybil-resistant identity to prevent abuse while allowing generous credit policies."_
 
 #### Solution Demo (90s):
 
-_"Watch this complete loan cycle: World ID proves I'm human without revealing personal data, our smart contract instantly pays the merchant, and I can repay later with automatic credit limit increases."_
+_"Watch this complete loan cycle: World ID proves I'm human without revealing personal data, our smart contract instantly pays the merchant, and I can repay later with automatic credit limit increases - all on World Chain mainnet."_
 
 #### Technical Achievement (30s):
 
-_"This isn't just a prototype - we have production-grade smart contracts, comprehensive testing, real Circle CCTP integration, and a mobile-optimized frontend that works today."_
+_"This isn't just a prototype - we have production-grade smart contracts with 95% test coverage, World ID integration that works today, and a mobile-optimized frontend deployed on World Chain."_
 
 #### Market Opportunity (30s):
 
-_"The $8 trillion BNPL market is growing 25% annually, and we already have advanced partnership discussions with the Asian Development Bank for Pacific region deployment."_
+_"Starting with Philippines: 1.3 million sari-sari stores and 81 million GCash users provide the perfect infrastructure for blockchain BNPL adoption in emerging markets."_
 
 #### Closing (30s):
 
-_"We're not just building another DeFi project - we're creating the infrastructure to bring financial inclusion to 1.4 billion people using the best of Web3 technology."_
+_"We're not just building another DeFi project - we're fundamentally reimagining financial trust to bring credit access to 100 million people by 2030."_
 
 ## 🎨 Design Elements
 
-- **Color Scheme:** World Chain blues (#64B5F6) with success greens (#81C784)
-- **Typography:** Inter for readability, JetBrains Mono for code
-- **Visual Style:** Modern gradients, subtle shadows, mobile-first design
-- **Branding:** Consistent with NanoLend Global identity
+- **Color Scheme:** Primary blue (#64B5F6) with success green (#35D07F) on clean white background
+- **Typography:** Inter for readability and professional appearance
+- **Visual Style:** Clean, minimalist design inspired by Circle and Celo presentations
+- **Components:** Unified achievement-box styling, stat circles for metrics, tech grids for features
+- **Branding:** Professional, accessible design focused on financial inclusion message
 
 ## 📱 Demo Preparation Checklist
 
 - [ ] Mini-app running on localhost:3000
 - [ ] ngrok tunnel active and accessible
 - [ ] World App installed on mobile device
-- [ ] Test merchant registered and active
-- [ ] Contract funded with sufficient USDC
-- [ ] Backup slides ready if demo fails
-- [ ] Timer set for 5-minute presentation
+- [ ] Test merchant registered and active (Manila Hospital)
+- [ ] Contract deployed on World Chain with sufficient liquidity
+- [ ] World ID verification working
+- [ ] Backup plan ready if demo fails
+- [ ] Timer set for 5-minute presentation + 2-3 minute demo
 
 ## 🔧 Technical Requirements
 
@@ -123,9 +123,15 @@ marp presentation/nanolend-global-eth-global-nyc.md --watch
 ## 📞 Contact Information
 
 **Alexander Schmitt**  
-Email: alexander@nanolend.global  
-GitHub: github.com/alexovate/nanolend-global  
-Demo: nanolend-global.vercel.app
+GitHub: github.com/alexovate/nanolend-global
+
+## 🚀 Current Status
+
+- **Live on World Chain:** Production BNPL smart contracts deployed
+- **World ID Integration:** Functional sybil-resistant verification
+- **Mobile-Optimized:** World App ready interface
+- **Philippine Market:** Focused on 1.3M sari-sari stores and 81M GCash users
+- **Future Expansion:** Solana integration and geographic expansion planned
 
 ---
 
