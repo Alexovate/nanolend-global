@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createPublicClient, http } from "viem";
 import { worldchain } from "viem/chains";
 import { Button } from "@worldcoin/mini-apps-ui-kit-react";
-import { MiniKit, Tokens } from "@worldcoin/minikit-js";
+import { MiniKit } from "@worldcoin/minikit-js";
 import { useSession } from "next-auth/react";
 import CrossChainBNPLABI from "@/abi/CrossChainBNPL.json";
 import {
@@ -198,7 +198,7 @@ export const LoanDetailModal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, loan?.loanId]); // Only depend on isOpen and loan ID, not the function itself
 
-  // Repay loan function with permit2
+  // Repay loan function using permit2 signature transfer
   const handleRepayLoan = async () => {
     if (!walletAddress || !currentBalance || !repaymentAmount) return;
 
@@ -214,27 +214,75 @@ export const LoanDetailModal = ({
         walletAddress,
       });
 
-      console.log("💳 Initiating repayment via MiniKit pay...");
+      console.log("💳 Initiating repayment via permit2 contract call...");
 
-      // Use MiniKit pay for loan repayment (simpler approach)
-      const { finalPayload } = await MiniKit.commandsAsync.pay({
-        reference: `repay-${loan.loanId}-${Date.now()}`,
-        to: CONTRACT_ADDRESS,
-        tokens: [
+      // Create permit2 transfer structure for World App (following working example)
+      const deadline = Math.floor((Date.now() + 30 * 60 * 1000) / 1000); // 30 minutes from now
+      const nonce = Date.now().toString(); // Use timestamp as nonce
+
+      console.log("🔍 Permit2 transaction details:");
+      console.log("  - Token:", WORLD_CHAIN_USDC_ADDRESS);
+      console.log("  - Amount:", repaymentUSDC.toString());
+      console.log("  - Deadline:", deadline);
+      console.log("  - Nonce:", nonce);
+      console.log("  - Recipient (Our Contract):", CONTRACT_ADDRESS);
+
+      // Execute permit2 transaction via World App (CORRECT PATTERN)
+      // Flow: World App -> Our Contract -> Permit2 Contract
+      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+        transaction: [
           {
-            symbol: Tokens.USDC,
-            token_amount: repaymentUSDC.toString(),
+            address: CONTRACT_ADDRESS,
+            abi: CrossChainBNPLABI,
+            functionName: "repayLoan",
+            args: [
+              loan.loanId, // loanId
+              // PermitTransferFrom struct
+              {
+                permitted: {
+                  token: WORLD_CHAIN_USDC_ADDRESS,
+                  amount: repaymentUSDC.toString(),
+                },
+                nonce: nonce,
+                deadline: deadline.toString(),
+              },
+              // SignatureTransferDetails struct
+              {
+                to: CONTRACT_ADDRESS,
+                requestedAmount: repaymentUSDC.toString(),
+              },
+              "PERMIT2_SIGNATURE_PLACEHOLDER_0", // Signature placeholder for World App
+            ],
           },
         ],
-        description: `Loan repayment for loan #${loan.loanId}`,
+        permit2: [
+          {
+            permitted: {
+              token: WORLD_CHAIN_USDC_ADDRESS,
+              amount: repaymentUSDC.toString(),
+            },
+            nonce: nonce,
+            deadline: deadline.toString(),
+            spender: CONTRACT_ADDRESS,
+          },
+        ],
       });
 
       if (finalPayload.status === "error") {
+        // Handle user cancellation gracefully
+        const errorCode = String(finalPayload.error_code).toLowerCase();
+        if (errorCode.includes("cancel") || errorCode.includes("user")) {
+          console.log("User cancelled repayment:", finalPayload.error_code);
+          return; // Exit without showing error
+        }
         throw new Error(`Repayment failed: ${finalPayload.error_code}`);
       }
 
       console.log("✅ Repayment completed successfully!");
-      console.log("  - Transaction ID:", finalPayload.transaction_id || "N/A");
+      console.log(
+        "  - Transaction Hash:",
+        finalPayload.transaction_id || "N/A"
+      );
 
       // Close modal and notify parent
       onClose();
@@ -254,20 +302,22 @@ export const LoanDetailModal = ({
       // Enhanced error messages for permit2 repayment
       let displayError = `Repayment error: ${errorMessage}`;
 
-      if (errorMessage.includes("Payment failed")) {
+      if (errorMessage.includes("Transaction failed")) {
         displayError =
-          "Payment failed. Please check your USDC balance and try again.";
+          "Transaction failed. Please check your USDC balance and try again.";
       } else if (errorMessage.includes("insufficient")) {
-        displayError = "Insufficient USDC balance for payment.";
-      } else if (errorMessage.includes("payment_failed")) {
-        displayError =
-          "Payment failed. Please check your USDC balance and try again.";
+        displayError = "Insufficient USDC balance for repayment.";
       } else if (errorMessage.includes("InvalidToken")) {
         displayError = "Invalid token address. Please contact support.";
       } else if (errorMessage.includes("PermitExpired")) {
-        displayError = "Payment permit expired. Please try again.";
+        displayError = "Transaction permit expired. Please try again.";
       } else if (errorMessage.includes("InvalidRecipient")) {
         displayError = "Invalid recipient address. Please contact support.";
+      } else if (errorMessage.includes("ExcessiveRepayment")) {
+        displayError =
+          "Repayment amount exceeds total owed. Please adjust amount.";
+      } else if (errorMessage.includes("InvalidRepaymentAmount")) {
+        displayError = "Invalid repayment amount. Full repayment required.";
       } else if (
         errorMessage.includes("already repaid") ||
         errorMessage.includes("LoanNotActive")
@@ -276,11 +326,13 @@ export const LoanDetailModal = ({
       } else if (errorMessage.includes("RepaymentsDisabled")) {
         displayError =
           "Repayments are temporarily disabled. Please try again later.";
+      } else if (errorMessage.includes("UnauthorizedAccess")) {
+        displayError = "You are not authorized to repay this loan.";
       } else if (errorMessage.includes("network")) {
         displayError =
           "Network error. Please check your connection and try again.";
       } else if (errorMessage.includes("timeout")) {
-        displayError = "Payment timed out. Please try again.";
+        displayError = "Transaction timed out. Please try again.";
       }
 
       setError(displayError);
@@ -468,7 +520,8 @@ export const LoanDetailModal = ({
 
               {/* Helper Text */}
               <p className="text-xs text-gray-500 text-center">
-                Repayment uses MiniKit for secure transactions
+                Repayment uses permit2 signature transfer for secure
+                transactions
               </p>
             </div>
           )}

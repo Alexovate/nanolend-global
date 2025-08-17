@@ -54,7 +54,7 @@ export function HomeContent({ session }: HomeContentProps) {
     <>
       <Page.Header className="p-0">
         <TopBar
-          title="NanoLend Global"
+          title="NanoLend"
           endAdornment={
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold capitalize">
