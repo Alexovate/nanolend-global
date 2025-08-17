@@ -4,7 +4,7 @@
 
 A revolutionary BNPL (Buy Now, Pay Later) platform that uses World ID verification instead of traditional credit scores. Built from scratch in 48 hours to bring financial inclusion to 1.4 billion unbanked people through blockchain-native identity verification.
 
-![NanoLend Global - Loan Dashboard](./assets/LoanDashboardScreen.PNG)
+<img src="./assets/LoanDashboardScreen.PNG" alt="NanoLend Global - Loan Dashboard" style="max-width: 600px; width: 100%; height: auto;" />
 
 ## 🎯 Core Innovation
 
@@ -227,22 +227,26 @@ forge test --match-test testCreditProgression
 
 #### Loan Dashboard
 
-![Loan Dashboard](./assets/LoanDashboardScreen.PNG)
+<img src="./assets/LoanDashboardScreen.PNG" alt="Loan Dashboard" style="max-width: 500px; width: 100%; height: auto;" />
+
 _Real-time BNPL credit status with available credit, total repaid, and active loans tracking_
 
 #### Loan Request Interface
 
-![Loan Request](./assets/LoanRequestScreen.PNG)
+<img src="./assets/LoanRequestScreen.PNG" alt="Loan Request Interface" style="max-width: 500px; width: 100%; height: auto;" />
+
 _World ID verified loan requests with merchant selection and instant approval_
 
 #### CCTP Bridge to Ethereum
 
-![Bridge Interface](./assets/CCTPBridgeToEthScreen.PNG)
+<img src="./assets/CCTPBridgeToEthScreen.PNG" alt="CCTP Bridge Interface" style="max-width: 500px; width: 100%; height: auto;" />
+
 _Cross-chain USDC bridging for Philippines GCash cash-out via Circle CCTP_
 
 #### Loan Repayment Flow
 
-![Repayment Interface](./assets/LoanRepaymentScreen.PNG)
+<img src="./assets/LoanRepaymentScreen.PNG" alt="Loan Repayment Interface" style="max-width: 500px; width: 100%; height: auto;" />
+
 _Seamless loan repayment with MiniKit integration and progressive credit building_
 
 ### 2. Smart Contract Interaction
