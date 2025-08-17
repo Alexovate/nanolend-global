@@ -1,295 +1,200 @@
 "use client";
 
-import { useState } from "react";
-import {
-  useAccount,
-  useWriteContract,
-  useWaitForTransactionReceipt,
-  useBalance,
-} from "wagmi";
-import { parseUnits, formatUnits } from "viem";
+import { useState, useCallback, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { createPublicClient, http } from "viem";
+import { worldchain } from "viem/chains";
+import { MiniKit } from "@worldcoin/minikit-js";
+import { Button } from "@worldcoin/mini-apps-ui-kit-react";
 import CrossChainBNPLABI from "@/abi/CrossChainBNPL.json";
+import { CONTRACT_ADDRESS, WORLD_CHAIN_USDC_ADDRESS } from "@/types/loan";
+import { usdToUSDC, usdcToUSDDisplay } from "@/utils/currency";
 
-// Contract configuration
-const CONTRACT_ADDRESS = process.env
-  .NEXT_PUBLIC_CROSSCHAIN_BNPL_ADDRESS as `0x${string}`;
-const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS as `0x${string}`;
-const USDC_DECIMALS = 6;
+const publicClient = createPublicClient({
+  chain: worldchain,
+  transport: http(),
+});
 
 const BRIDGE_PRESET_AMOUNTS = ["5", "10", "20", "50"];
 
 export function BridgeInterface() {
-  const { address } = useAccount();
+  const { data: session } = useSession();
   const [bridgeAmount, setBridgeAmount] = useState("10");
   const [ethereumAddress, setEthereumAddress] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showGCashGuide, setShowGCashGuide] = useState(false);
+  const [usdcBalance, setUsdcBalance] = useState<bigint>(BigInt(0));
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  // Get user's USDC balance
-  const { data: usdcBalance } = useBalance({
-    address,
-    token: USDC_ADDRESS,
-  });
+  const walletAddress = session?.user?.walletAddress as `0x${string}`;
 
-  const { writeContract, data: hash, error } = useWriteContract();
+  // Load USDC balance
+  const loadUSDCBalance = useCallback(async () => {
+    if (!walletAddress) return;
 
-  const { isLoading: isConfirming, isSuccess: isConfirmed } =
-    useWaitForTransactionReceipt({
-      hash,
-    });
+    try {
+      const balance = await publicClient.readContract({
+        address: WORLD_CHAIN_USDC_ADDRESS,
+        abi: [
+          {
+            name: "balanceOf",
+            type: "function",
+            stateMutability: "view",
+            inputs: [{ name: "account", type: "address" }],
+            outputs: [{ name: "", type: "uint256" }],
+          },
+        ],
+        functionName: "balanceOf",
+        args: [walletAddress],
+      });
+      setUsdcBalance(balance as bigint);
+    } catch (err) {
+      console.error("Error loading USDC balance:", err);
+    }
+  }, [walletAddress]);
+
+  useEffect(() => {
+    if (walletAddress) {
+      loadUSDCBalance();
+    }
+  }, [walletAddress, loadUSDCBalance]);
 
   const handleBridgeToEthereum = async () => {
-    if (!address || !bridgeAmount || !ethereumAddress) return;
+    if (!walletAddress || !bridgeAmount || !ethereumAddress) return;
 
     try {
       setIsLoading(true);
+      setError(null);
 
-      const amountWei = parseUnits(bridgeAmount, USDC_DECIMALS);
+      const bridgeAmountUSDC = usdToUSDC(parseFloat(bridgeAmount));
 
-      writeContract({
-        address: CONTRACT_ADDRESS,
-        abi: CrossChainBNPLABI,
-        functionName: "bridgeToEthereum",
-        args: [amountWei, ethereumAddress as `0x${string}`],
+      console.log("🌉 Starting bridge transaction:", {
+        amount: bridgeAmount,
+        amountUSDC: bridgeAmountUSDC.toString(),
+        ethereumAddress,
       });
+
+      const transactionPayload = {
+        transaction: [
+          {
+            address: CONTRACT_ADDRESS,
+            abi: CrossChainBNPLABI,
+            functionName: "bridgeToEthereum",
+            args: [bridgeAmountUSDC, ethereumAddress],
+          },
+        ],
+      };
+
+      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction(
+        transactionPayload
+      );
+
+      if (finalPayload.status === "error") {
+        throw new Error(`Bridge failed: ${finalPayload.error_code}`);
+      }
+
+      console.log("✅ Bridge transaction successful!");
+      setSuccess(true);
+      setBridgeAmount("10");
+      setEthereumAddress("");
+
+      // Refresh balance
+      setTimeout(() => {
+        loadUSDCBalance();
+      }, 2000);
     } catch (err) {
-      console.error("Bridge error:", err);
+      console.error("❌ Bridge error:", err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const isProcessing = isLoading || isConfirming;
-  const availableBalance = usdcBalance
-    ? formatUnits(usdcBalance.value, USDC_DECIMALS)
-    : "0";
+  const availableBalance = usdcToUSDDisplay(usdcBalance).replace("$", "");
 
   return (
     <div className="w-full space-y-4">
-      {/* Bridge Interface */}
-      <div className="bg-white rounded-xl shadow-lg p-6 space-y-4">
-        {/* Header */}
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-gray-900">
-            🌉 CCTP Bridge
-          </h3>
-          <p className="text-sm text-gray-600">
-            Bridge USDC to Ethereum in ~15 minutes
-          </p>
-        </div>
-
+      {/* Simplified Bridge Interface */}
+      <div className="bg-white rounded-xl shadow-lg p-6 space-y-6">
         {/* Balance Display */}
-        <div className="bg-gray-50 rounded-lg p-4 text-center">
-          <p className="text-sm text-gray-600">Your World Chain USDC Balance</p>
-          <p className="text-2xl font-bold text-gray-900">
-            {availableBalance} USDC
-          </p>
+        <div className="text-center">
+          <p className="text-sm text-gray-600 mb-1">Available USDC</p>
+          <p className="text-3xl font-bold text-gray-900">{availableBalance}</p>
         </div>
 
-        {/* Bridge Amount Selection */}
+        {/* Amount Selection */}
         <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">
-            Amount to Bridge (USDC)
-          </label>
+          <p className="text-center text-sm font-medium text-gray-700">
+            Choose amount to bridge
+          </p>
 
-          {/* Preset Amount Buttons */}
-          <div className="grid grid-cols-4 gap-2">
-            {BRIDGE_PRESET_AMOUNTS.map((presetAmount) => (
+          <div className="grid grid-cols-4 gap-3">
+            {BRIDGE_PRESET_AMOUNTS.map((amount) => (
               <button
-                key={presetAmount}
-                onClick={() => setBridgeAmount(presetAmount)}
-                disabled={
-                  parseFloat(presetAmount) > parseFloat(availableBalance)
-                }
-                className={`py-3 px-2 rounded-lg font-semibold text-sm transition-all ${
-                  bridgeAmount === presetAmount
-                    ? "bg-green-500 text-white"
-                    : parseFloat(presetAmount) > parseFloat(availableBalance)
-                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                key={amount}
+                onClick={() => setBridgeAmount(amount)}
+                disabled={parseFloat(amount) > parseFloat(availableBalance)}
+                className={`py-4 rounded-xl font-semibold transition-all ${
+                  bridgeAmount === amount
+                    ? "bg-green-500 text-white shadow-lg"
+                    : parseFloat(amount) > parseFloat(availableBalance)
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:scale-95"
                 }`}
               >
-                ${presetAmount}
+                ${amount}
               </button>
             ))}
           </div>
-
-          {/* Selected Amount Display */}
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-            <p className="text-sm text-green-600 font-medium">
-              Bridging Amount
-            </p>
-            <p className="text-2xl font-bold text-green-900">
-              ${bridgeAmount} USDC
-            </p>
-          </div>
-
-          <p className="text-xs text-gray-500 text-center">
-            Available: {availableBalance} USDC • Fee: Free (Demo)
-          </p>
         </div>
 
-        {/* Ethereum Address Input */}
+        {/* Ethereum Address */}
         <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">
-            Ethereum Wallet Address
-          </label>
-
-          <div className="space-y-2">
-            <input
-              type="text"
-              value={ethereumAddress}
-              onChange={(e) => setEthereumAddress(e.target.value)}
-              placeholder="0x1234567890123456789012345678901234567890"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            />
-
-            {/* Quick Wallet Options */}
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() =>
-                  setEthereumAddress(
-                    "0x742f35c9e4C4D1b3B1bA4e0c1F1c0b2b8c45E2F1"
-                  )
-                }
-                className="py-2 px-3 bg-gray-100 rounded-lg text-xs text-gray-700 hover:bg-gray-200 transition-all"
-              >
-                📱 Use MetaMask
-              </button>
-              <button
-                onClick={() =>
-                  setEthereumAddress(
-                    "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
-                  )
-                }
-                className="py-2 px-3 bg-gray-100 rounded-lg text-xs text-gray-700 hover:bg-gray-200 transition-all"
-              >
-                🏦 Use Exchange
-              </button>
-            </div>
-          </div>
-
-          <p className="text-xs text-gray-500">
-            🇵🇭 Your Ethereum wallet for GCash cash-out via Binance P2P
-          </p>
+          <input
+            type="text"
+            value={ethereumAddress}
+            onChange={(e) => setEthereumAddress(e.target.value)}
+            placeholder="Ethereum address (0x...)"
+            className="w-full px-4 py-4 border border-gray-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          />
         </div>
 
         {/* Bridge Button */}
-        <button
+        <Button
           onClick={handleBridgeToEthereum}
           disabled={
-            !address || !bridgeAmount || !ethereumAddress || isProcessing
+            !walletAddress || !bridgeAmount || !ethereumAddress || isLoading
           }
-          className={`w-full py-4 rounded-lg font-semibold text-white transition-all ${
-            !address || !bridgeAmount || !ethereumAddress || isProcessing
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-green-600 hover:bg-green-700 active:scale-95"
-          }`}
+          className="w-full py-4 text-lg"
         >
-          {isProcessing
-            ? "Bridging..."
-            : !address
-            ? "Connect Wallet"
-            : `Bridge ${bridgeAmount} USDC to Ethereum`}
-        </button>
+          {isLoading ? "Bridging..." : `↗️ Bridge $${bridgeAmount} to Ethereum`}
+        </Button>
 
         {/* Status Messages */}
-        {isConfirming && (
-          <div className="text-center text-sm text-green-600">
-            🔄 Bridge transaction confirming... (~15 minutes)
-          </div>
-        )}
-
-        {isConfirmed && (
-          <div className="text-center space-y-2">
-            <div className="text-sm text-green-600 font-medium">
-              ✅ CCTP Bridge initiated successfully!
-            </div>
-            <button
-              onClick={() => setShowGCashGuide(true)}
-              className="text-blue-600 text-sm underline hover:text-blue-800"
-            >
-              📱 View GCash cash-out guide
-            </button>
-          </div>
-        )}
-
         {error && (
-          <div className="text-center text-sm text-red-600">
-            ❌ Error: {error.message}
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+            <p className="text-red-800 text-sm">❌ {error}</p>
           </div>
         )}
 
-        {/* Info Footer */}
-        <div className="border-t pt-4 text-center">
-          <p className="text-xs text-gray-500">
-            🌉 Circle CCTP • ⚡ ~15 min bridge time • 🆓 Zero fees (Demo)
-          </p>
-        </div>
-      </div>
-
-      {/* GCash Cash-Out Guide */}
-      {showGCashGuide && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 space-y-4">
-          <div className="flex justify-between items-start">
-            <h4 className="text-lg font-semibold text-blue-900">
-              📱 GCash Cash-Out Guide
-            </h4>
-            <button
-              onClick={() => setShowGCashGuide(false)}
-              className="text-blue-600 hover:text-blue-800"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className="space-y-3 text-sm">
-            <div className="bg-white rounded-lg p-4">
-              <h5 className="font-semibold text-gray-900 mb-2">
-                Step 1: Wait for Bridge (15 minutes)
-              </h5>
-              <p className="text-gray-600">
-                Your USDC is being transferred to Ethereum via Circle CCTP.
-                You&apos;ll receive it at:{" "}
-                <span className="font-mono text-xs break-all">
-                  {ethereumAddress}
-                </span>
-              </p>
-            </div>
-
-            <div className="bg-white rounded-lg p-4">
-              <h5 className="font-semibold text-gray-900 mb-2">
-                Step 2: Convert USDC to PHP
-              </h5>
-              <p className="text-gray-600 mb-2">
-                Use Binance P2P (recommended):
-              </p>
-              <ul className="text-gray-600 text-xs space-y-1 ml-4 list-disc">
-                <li>Open Binance app → P2P Trading</li>
-                <li>Sell USDC → Buy PHP</li>
-                <li>Select GCash as payment method</li>
-                <li>Fee: ~2-4% total</li>
-              </ul>
-            </div>
-
-            <div className="bg-white rounded-lg p-4">
-              <h5 className="font-semibold text-gray-900 mb-2">
-                Step 3: Receive in GCash
-              </h5>
-              <p className="text-gray-600">
-                P2P buyer will send PHP directly to your GCash account. Complete
-                transaction within 15 minutes.
-              </p>
-            </div>
-          </div>
-
-          <div className="text-center pt-2">
-            <p className="text-xs text-blue-600">
-              💡 Total time: ~30 minutes • Total fees: ~2-4%
+        {success && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+            <p className="text-green-800 font-medium mb-2">
+              ✅ Bridge Started!
+            </p>
+            <p className="text-green-700 text-sm">
+              USDC will arrive in ~15 minutes. Use Binance P2P to convert to PHP
+              for GCash.
             </p>
           </div>
+        )}
+
+        {/* Simple Footer */}
+        <div className="text-center text-xs text-gray-500 pt-2 border-t">
+          Free bridge • ~15 minutes • For GCash cash-out
         </div>
-      )}
+      </div>
     </div>
   );
 }

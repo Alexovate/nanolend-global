@@ -121,7 +121,7 @@ export const LoanDashboard = forwardRef<LoanDashboardRef, LoanDashboardProps>(
     // Loading state
     if (loading) {
       return (
-        <div className="w-full bg-white rounded-xl shadow-lg p-6">
+        <div className="w-full bg-white rounded-xl shadow-lg border p-6">
           <div className="animate-pulse space-y-4">
             <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
             <div className="grid grid-cols-2 gap-4">
@@ -137,7 +137,7 @@ export const LoanDashboard = forwardRef<LoanDashboardRef, LoanDashboardProps>(
     // Error state
     if (loadError || !dashboardData) {
       return (
-        <div className="w-full bg-white rounded-xl shadow-lg p-6">
+        <div className="w-full bg-white rounded-xl shadow-lg border p-6">
           <div className="text-center text-red-600">
             <p className="font-medium">Failed to load dashboard</p>
             <button
@@ -154,7 +154,7 @@ export const LoanDashboard = forwardRef<LoanDashboardRef, LoanDashboardProps>(
     // Connection status
     if (!walletAddress) {
       return (
-        <div className="w-full bg-white rounded-xl shadow-lg p-6">
+        <div className="w-full bg-white rounded-xl shadow-lg border p-6">
           <div className="text-center text-gray-500">
             <p className="font-medium">Connect wallet to view your loans</p>
           </div>
@@ -168,7 +168,7 @@ export const LoanDashboard = forwardRef<LoanDashboardRef, LoanDashboardProps>(
     );
 
     return (
-      <div className="w-full bg-white rounded-xl shadow-lg p-6 space-y-6">
+      <div className="w-full bg-white rounded-xl shadow-lg border p-6 space-y-6">
         {/* Header */}
         <div className="text-center">
           <h3 className="text-lg font-semibold text-gray-900">

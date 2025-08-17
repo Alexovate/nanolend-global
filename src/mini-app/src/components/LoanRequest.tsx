@@ -406,16 +406,6 @@ export const LoanRequest = forwardRef<LoanRequestRef, LoanRequestProps>(
     return (
       <div className="w-full max-w-md mx-auto bg-white rounded-lg shadow-sm border p-6">
         <div className="space-y-6">
-          {/* Header */}
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Buy Now, Pay Later
-            </h2>
-            <p className="text-sm text-gray-600">
-              Get products instantly, repay later with low interest
-            </p>
-          </div>
-
           {/* Error Messages */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -557,12 +547,6 @@ export const LoanRequest = forwardRef<LoanRequestRef, LoanRequestProps>(
               ? "Select Merchant"
               : `Request $${loanAmount} Loan`}
           </Button>
-
-          {/* Helper Text */}
-          <p className="text-xs text-gray-500 text-center">
-            Buy now, pay later! Contract pays merchant instantly, you repay
-            later with interest
-          </p>
         </div>
       </div>
     );

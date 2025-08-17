@@ -67,18 +67,6 @@ export function HomeContent({ session }: HomeContentProps) {
       </Page.Header>
 
       <Page.Main className="flex flex-col mb-16">
-        {/* App Description */}
-        <div className="px-4 py-6 bg-gradient-to-r from-blue-50 to-green-50 border-b">
-          <div className="text-center max-w-md mx-auto">
-            <h1 className="text-xl font-bold text-gray-900 mb-2">
-              🇵🇭 BNPL + CCTP Offramp
-            </h1>
-            <p className="text-sm text-gray-600">
-              Request USDC loans • Bridge to Ethereum • Cash out to GCash
-            </p>
-          </div>
-        </div>
-
         {/* Tab Navigation */}
         <div className="px-4 py-4 bg-white border-b">
           <div className="flex max-w-md mx-auto">
@@ -100,27 +88,18 @@ export function HomeContent({ session }: HomeContentProps) {
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              🌉 Bridge
+              ↗️ Bridge
             </button>
           </div>
         </div>
 
         {/* Tab Content */}
-        <div className="px-4 py-6 bg-gray-50 min-h-screen">
+        <div className="px-4 py-6 bg-white min-h-screen">
           <div className="max-w-md mx-auto space-y-4">
             {activeTab === "loans" && (
               <>
                 {/* Loan Dashboard */}
                 <div className="space-y-4">
-                  <div className="text-center">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-1">
-                      💰 USDC Loans Dashboard
-                    </h2>
-                    <p className="text-sm text-gray-600">
-                      Manage your World ID verified micro-loans
-                    </p>
-                  </div>
-
                   <LoanDashboard
                     ref={loanDashboardRef}
                     onLoanSelect={handleLoanSelect}
@@ -131,19 +110,6 @@ export function HomeContent({ session }: HomeContentProps) {
                     onTransactionSuccess={handleTransactionSuccess}
                   />
                 </div>
-
-                {/* Quick Bridge CTA */}
-                <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4 text-center">
-                  <p className="text-sm text-gray-700 mb-2">
-                    Got USDC to cash out?
-                  </p>
-                  <button
-                    onClick={() => setActiveTab("bridge")}
-                    className="text-green-600 font-medium text-sm underline hover:text-green-800"
-                  >
-                    Switch to Bridge Dashboard →
-                  </button>
-                </div>
               </>
             )}
 
@@ -153,25 +119,14 @@ export function HomeContent({ session }: HomeContentProps) {
                 <div className="space-y-4">
                   <div className="text-center">
                     <h2 className="text-lg font-semibold text-gray-900 mb-1">
-                      🌉 CCTP Bridge Dashboard
+                      ↗️ Bridge to Ethereum
                     </h2>
                     <p className="text-sm text-gray-600">
-                      Bridge USDC to Ethereum for Philippines GCash cash-out
+                      Convert USDC to cash via GCash
                     </p>
                   </div>
 
                   <BridgeInterface />
-                </div>
-
-                {/* Quick Loan CTA */}
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4 text-center">
-                  <p className="text-sm text-gray-700 mb-2">Need more USDC?</p>
-                  <button
-                    onClick={() => setActiveTab("loans")}
-                    className="text-blue-600 font-medium text-sm underline hover:text-blue-800"
-                  >
-                    Request a micro-loan →
-                  </button>
                 </div>
               </>
             )}
